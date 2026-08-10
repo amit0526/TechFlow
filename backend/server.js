@@ -73,7 +73,35 @@ app.delete("/users/:id", async (req, res) => {
     });
   }
 });
+    
+app.patch("/users/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, email } = req.body;
 
+    const result = await pool.query(
+      `UPDATE users
+       SET name = $1, email = $2
+       WHERE id = $3
+       RETURNING *`,
+      [name, email, id],
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        error: "User not found",
+      });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      error: "Failed to update user",
+    });
+  }
+});
+   
 const PORT = 5000;
 
 app.listen(PORT, () => {

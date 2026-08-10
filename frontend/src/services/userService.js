@@ -37,3 +37,19 @@ export const deleteUser = async (id) => {
 
   return response.json();
 };
+
+export const updateUser = async (id, user) => {
+  const response = await fetch(`${API_URL}/Users/${id}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(user),
+  });
+
+  if (!response.ok) {
+    throw new Error("Faild to update user");
+  }
+
+  return response.json();
+};

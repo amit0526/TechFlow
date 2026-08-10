@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getUsers, createUser,deleteUser as deleteUserApi, } from "./services/userService";
+import { getUsers, createUser, deleteUser as deleteUserApi,  updateUser, } from "./services/userService";
 import UserForm from "./components/UserForm";
 import UserList from "./components/UserList";
 
@@ -32,7 +32,18 @@ function App() {
      const deleteUser = async (id) => {
       await deleteUserApi(id);
        fetchUsers();
-    };
+     };
+    
+  const editUser = async (id) => {
+    const name = prompt("Enter new name:");
+    const email = prompt("Enter new email:");
+
+    if (!name || !email) return;
+    
+    await updateUser(id, { name, email });
+
+    fetchUsers();
+  };
 
   return (
     <div className="min-h-screen bg-slate-950 text-white p-8">
@@ -54,6 +65,7 @@ function App() {
         <UserList
           users={users}
           deleteUser={deleteUser}
+          editUser={editUser}
         />
       </div>
     </div>
