@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { getUsers, createUser } from "./services/userService";
 
 function App() {
   const [users, setUsers] = useState([]);
@@ -6,8 +7,7 @@ function App() {
   const [email, setEmail] = useState("");
 
   const fetchUsers = async () => {
-    const response = await fetch("http://localhost:5000/users");
-    const data = await response.json();
+    const data = await getUsers();
     setUsers(data);
   };
 
@@ -20,13 +20,7 @@ function App() {
 
     if (!name || !email) return;
 
-    await fetch("http://localhost:5000/users", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ name, email }),
-    });
+    await createUser({ name, email });
 
     setName("");
     setEmail("");
