@@ -1,4 +1,4 @@
-function UserList({ users ,deleteUser }) {
+function UserList({ users , deleteUser }) {
   return (
     <div className="space-y-4">
       {users.map((user) => (
@@ -8,8 +8,9 @@ function UserList({ users ,deleteUser }) {
 
           <p className="text-slate-400">{user.email}</p>
           </div>
+
           <button
-            onclick={() => deleteUser(user.id)}
+            onClick={() => deleteUser(user.id)}
             className="bg-red-500 hover:bg-red-400 text-white font-semibold px-4 py-2 rounded-lg"> Delete
           </button>
           </div>

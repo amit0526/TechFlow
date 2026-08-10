@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getUsers, createUser } from "./services/userService";
+import { getUsers, createUser,deleteUser as deleteUserApi, } from "./services/userService";
 import UserForm from "./components/UserForm";
 import UserList from "./components/UserList";
 
@@ -29,6 +29,11 @@ function App() {
     fetchUsers();
   };
 
+     const deleteUser = async (id) => {
+      await deleteUserApi(id);
+       fetchUsers();
+    };
+
   return (
     <div className="min-h-screen bg-slate-950 text-white p-8">
       <div className="max-w-4xl mx-auto">
@@ -46,7 +51,10 @@ function App() {
         />
 
         {/* Users */}
-        <UserList users={users} />
+        <UserList
+          users={users}
+          deleteUser={deleteUser}
+        />
       </div>
     </div>
   );
