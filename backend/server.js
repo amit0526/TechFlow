@@ -47,6 +47,33 @@ app.post("/users", async (req, res) => {
   }
 });
 
+app.delete("/users/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await pool.query(
+      "DELETE FROM users WHERE id = $1 RETURNING *",
+      [id],
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        error: "User not found",
+      });
+    }
+
+    res.json({
+      message: "User deleted successfully",
+      user: result.rows[0],
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      error: "Failed to delete user",
+    });
+  }
+});
+
 const PORT = 5000;
 
 app.listen(PORT, () => {
