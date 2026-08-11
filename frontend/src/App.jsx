@@ -11,15 +11,19 @@ function App() {
   const [email, setEmail] = useState("");
   const [editingUser, setEditingUser] = useState(null);
   const [search, setSearch] = useState("");
+  const [error, setError] = useState("");
 
   const fetchUsers = async () => {
     try {
       setLoading(true);
+      setError("")
+
       const data = await getUsers();
       setUsers(data);
       
     } catch (error) {
       console.error(error);
+      setError("Failed to load users. Please try again.");
 
     } finally {
       setLoading(false);
@@ -111,6 +115,10 @@ function App() {
 
         {loading ? (
           <p className="text-slate-400">Loading users...</p>
+        ) : error ? (
+            <div className="bg-red-900/30 border border-red-500 p-5 rounded-xl">
+              <p className="text-red-400">{error}</p>
+              </div>
         ) : (
           <UserList
             users={filteredUsers}
