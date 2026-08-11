@@ -1,4 +1,4 @@
-function UserList({ users, deleteUser, editUser }) {
+function UserList({ users, deleteUser, editUser, loading }) {
   return (
     <div className="space-y-4">
       {users.length === 0 ? (
@@ -13,7 +13,7 @@ function UserList({ users, deleteUser, editUser }) {
         users.map((user) => (
           <div
             key={user.id}
-            className="bg-slate-800 p-5 rounded-xl flex  flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
+            className="bg-slate-800 p-5 rounded-xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
           >
             <div>
               <h2 className="text-xl font-semibold">{user.name}</h2>
@@ -21,19 +21,21 @@ function UserList({ users, deleteUser, editUser }) {
               <p className="text-slate-400">{user.email}</p>
             </div>
 
-            <div className="flex gap-3 w-full sm:w-auto">
+            <div className="flex gap-3">
               <button
                 onClick={() => editUser(user)}
-                className="flex-1 sm:flex-none bg-blue-500 hover:bg-blue-400 text-white font-semibold px-4 py-2 rounded-lg"
+                disabled={loading}
+                className="bg-blue-500 hover:bg-blue-400 text-white font-semibold px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Edit
               </button>
 
               <button
                 onClick={() => deleteUser(user.id)}
-                className="flex-1 sm:flex-none bg-red-500 hover:bg-red-400 text-white font-semibold px-4 py-2 rounded-lg"
+                disabled={loading}
+                className="bg-red-500 hover:bg-red-400 text-white font-semibold px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Delete
+                {loading ? "..." : "Delete"}
               </button>
             </div>
           </div>

@@ -1,33 +1,65 @@
 import { useState } from "react";
 
-function EditForm({ user, setEditingUser, updateUser,fetchUsers, }) {
+function EditForm({
+  user,
+  setEditingUser,
+  updateUser,
+  fetchUsers,
+  loading,
+  setLoading,
+}) {
   const [name, setName] = useState(user.name);
   const [email, setEmail] = useState(user.email);
 
-  const handleSubmit = async (e) => {
+  const handleUpdate = async (e) => {
     e.preventDefault();
 
-    await updateUser(user.id, {
-      name,
-      email,
-    });
-     
-    await fetchUsers();
+    if (!name || !email || loading) return;
 
-    setEditingUser(null);
+    try {
+      setLoading(true);
+
+      await updateUser(user.id, {
+        name,
+        email,
+      });
+
+      await fetchUsers();
+
+      setEditingUser(null);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="bg-slate-900 p-6 rounded-xl mb-8">
-      <h2 className="text-xl font-semibold mb-4">Edit User</h2>
+    <form
+      onSubmit={handleUpdate}
+      className="bg-slate-900 border border-cyan-500/30 p-5 rounded-xl mb-6"
+    >
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xl font-semibold">Edit User</h2>
 
-      <div className="flex flex-col sm:flex-row gap-4">
+        <button
+          type="button"
+          onClick={() => setEditingUser(null)}
+          disabled={loading}
+          className="text-slate-400 hover:text-white text-xl"
+        >
+          ✕
+        </button>
+      </div>
+
+      <div className="flex flex-col md:flex-row gap-4">
         <input
           type="text"
           placeholder="Name"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className=" w-full sm:flex-1 bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 outline-none"
+          disabled={loading}
+          className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 outline-none focus:border-cyan-400 disabled:opacity-50"
         />
 
         <input
@@ -35,22 +67,16 @@ function EditForm({ user, setEditingUser, updateUser,fetchUsers, }) {
           placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className=" w-full sm:flex-1 bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 outline-none"
+          disabled={loading}
+          className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 outline-none focus:border-cyan-400 disabled:opacity-50"
         />
 
         <button
           type="submit"
-          className="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold px-6 rounded-lg w-full sm:w-auto"
+          disabled={loading}
+          className="bg-green-500 hover:bg-green-400 text-slate-950 font-bold px-6 py-3 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          Update
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setEditingUser(null)}
-          className="bg-slate-600 hover:bg-slate-500 px-6 rounded-lg"
-        >
-          Cancel
+          {loading ? "Updating..." : "Update"}
         </button>
       </div>
     </form>

@@ -1,4 +1,13 @@
+import { NavLink } from "react-router-dom";
+
 function Sidebar({ sidebarOpen, setSidebarOpen }) {
+  const linkClass = ({ isActive }) =>
+    `block w-full px-4 py-3 rounded-lg font-semibold transition ${
+      isActive
+        ? "bg-cyan-500 text-slate-950"
+        : "text-slate-300 hover:bg-slate-800"
+    }`;
+
   return (
     <>
       {/* Mobile Overlay */}
@@ -21,10 +30,12 @@ function Sidebar({ sidebarOpen, setSidebarOpen }) {
           min-h-[calc(100vh-4rem)]
           p-4
           transform transition-transform duration-300
-          ${sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
+          ${
+            sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+          }
         `}
       >
-        {/* Mobile Close Button */}
+        {/* Mobile Close */}
         <div className="flex justify-end md:hidden mb-4">
           <button
             onClick={() => setSidebarOpen(false)}
@@ -35,26 +46,29 @@ function Sidebar({ sidebarOpen, setSidebarOpen }) {
         </div>
 
         <nav className="space-y-2">
-          <button
+          <NavLink
+            to="/"
             onClick={() => setSidebarOpen(false)}
-            className="w-full text-left px-4 py-3 rounded-lg bg-cyan-500 text-slate-950 font-semibold"
+            className={linkClass}
           >
             Dashboard
-          </button>
+          </NavLink>
 
-          <button
+          <NavLink
+            to="/users"
             onClick={() => setSidebarOpen(false)}
-            className="w-full text-left px-4 py-3 rounded-lg text-slate-300 hover:bg-slate-800"
+            className={linkClass}
           >
             Users
-          </button>
+          </NavLink>
 
-          <button
+          <NavLink
+            to="/settings"
             onClick={() => setSidebarOpen(false)}
-            className="w-full text-left px-4 py-3 rounded-lg text-slate-300 hover:bg-slate-800"
+            className={linkClass}
           >
             Settings
-          </button>
+          </NavLink>
         </nav>
       </aside>
     </>
