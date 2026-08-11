@@ -21,13 +21,13 @@ function EditForm({ user, setEditingUser, updateUser,fetchUsers, }) {
     <form onSubmit={handleSubmit} className="bg-slate-900 p-6 rounded-xl mb-8">
       <h2 className="text-xl font-semibold mb-4">Edit User</h2>
 
-      <div className="flex gap-4">
+      <div className="flex flex-col sm:flex-row gap-4">
         <input
           type="text"
           placeholder="Name"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 outline-none"
+          className=" w-full sm:flex-1 bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 outline-none"
         />
 
         <input
@@ -35,12 +35,12 @@ function EditForm({ user, setEditingUser, updateUser,fetchUsers, }) {
           placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 outline-none"
+          className=" w-full sm:flex-1 bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 outline-none"
         />
 
         <button
           type="submit"
-          className="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold px-6 rounded-lg"
+          className="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold px-6 rounded-lg w-full sm:w-auto"
         >
           Update
         </button>

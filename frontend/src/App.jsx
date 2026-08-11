@@ -34,28 +34,45 @@ function App() {
     fetchUsers();
   }, []);
 
-  const addUser = async (e) => {
-    e.preventDefault();
+    const addUser = async (e) => {
+      e.preventDefault();
 
-    if (!name || !email) return;
+      if (!name || !email) return;
 
-    await createUser({ name, email });
+      try {
+        setError("");
 
-    setName("");
-    setEmail("");
-    fetchUsers();
-  };
+        await createUser({ name, email });
+
+        setName("");
+        setEmail("");
+
+        await fetchUsers();
+      } catch (error) {
+        console.error(error);
+        setError("Failed to add user. Please try again.");
+      }
+    };
+  
 
   const deleteUser = async (id) => {
     const confirmDelete = window.confirm(
-      "Are you sure you want to delete this user?"
+      "Are you sure you want to delete this user?",
     );
-    
+
     if (!confirmDelete) return;
 
+    try {
+      setError("");
+
       await deleteUserApi(id);
-       fetchUsers();
-     };
+
+      await fetchUsers();
+    } catch (error) {
+      console.error(error);
+      setError("Failed to delete user. Please try again.");
+    }
+  };
     
       const editUser = (user) => {
       console.log("Editing user:", user);
@@ -71,9 +88,9 @@ function App() {
   
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white p-8">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-4xl font-bold text-cyan-400">TechFlow 🚀</h1>
+    <div className="min-h-screen bg-slate-950 text-white p-4 sm:p-6 md:p-8">
+      <div className="w-full max-w-4xl mx-auto">
+        <h1 className="text-3xl sm:text-4xl font-bold text-cyan-400">TechFlow 🚀</h1>
 
         <p className="text-slate-400 mt-2 mb-8">PostgreSQL User Management</p>
 
@@ -116,9 +133,9 @@ function App() {
         {loading ? (
           <p className="text-slate-400">Loading users...</p>
         ) : error ? (
-            <div className="bg-red-900/30 border border-red-500 p-5 rounded-xl">
-              <p className="text-red-400">{error}</p>
-              </div>
+          <div className="bg-red-900/30 border border-red-500 p-5 rounded-xl">
+            <p className="text-red-400">{error}</p>
+          </div>
         ) : (
           <UserList
             users={filteredUsers}
