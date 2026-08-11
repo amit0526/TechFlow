@@ -25,12 +25,11 @@ function Dashboard() {
     fetchUsers();
   }, []);
 
-  const totalUsers = users.length;
-
+  // Latest 5 users
   const recentUsers = [...users].reverse().slice(0, 5);
 
   return (
-    <div className="w-full max-w-6xl mx-auto">
+    <div className="w-full max-w-7xl mx-auto">
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl sm:text-4xl font-bold text-cyan-400">
@@ -40,68 +39,83 @@ function Dashboard() {
         <p className="text-slate-400 mt-2">Welcome to TechFlow</p>
       </div>
 
+      {/* Error */}
+      {error && (
+        <div className="mb-6 rounded-xl border border-red-500/50 bg-red-900/20 p-4">
+          <p className="text-red-400">{error}</p>
+        </div>
+      )}
+
       {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-8">
         {/* Total Users */}
-        <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl">
-          <p className="text-slate-400">Total Users</p>
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 sm:p-6">
+          <p className="text-slate-400 text-sm">Total Users</p>
 
           <h2 className="text-3xl font-bold text-cyan-400 mt-2">
-            {loading ? "..." : totalUsers}
+            {loading ? "..." : users.length}
           </h2>
         </div>
 
         {/* Database */}
-        <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl">
-          <p className="text-slate-400">Database</p>
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 sm:p-6">
+          <p className="text-slate-400 text-sm">Database</p>
 
-          <h2 className="text-xl font-bold text-green-400 mt-2">Connected</h2>
+          <h2 className="text-xl sm:text-2xl font-bold text-green-400 mt-2">
+            Connected
+          </h2>
         </div>
 
         {/* API */}
-        <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl">
-          <p className="text-slate-400">API Status</p>
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 sm:p-6">
+          <p className="text-slate-400 text-sm">API Status</p>
 
-          <h2 className="text-xl font-bold text-green-400 mt-2">Online</h2>
+          <h2 className="text-xl sm:text-2xl font-bold text-green-400 mt-2">
+            Online
+          </h2>
         </div>
       </div>
 
       {/* Recent Users */}
       <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
-        <div className="p-6 border-b border-slate-800">
-          <h2 className="text-xl font-semibold">Recent Users</h2>
+        {/* Header */}
+        <div className="p-5 sm:p-6 border-b border-slate-800">
+          <h2 className="text-xl font-bold text-white">Recent Users</h2>
 
           <p className="text-sm text-slate-400 mt-1">
             Latest users added to the system
           </p>
         </div>
 
+        {/* Loading */}
         {loading ? (
           <div className="p-6">
             <p className="text-slate-400">Loading users...</p>
           </div>
-        ) : error ? (
-          <div className="p-6">
-            <p className="text-red-400">{error}</p>
-          </div>
         ) : recentUsers.length === 0 ? (
+          /* Empty State */
           <div className="p-8 text-center">
             <p className="text-slate-400">No users found.</p>
           </div>
         ) : (
-          <div className="divide-y divide-slate-800">
+          /* Users */
+          <div>
             {recentUsers.map((user) => (
               <div
                 key={user.id}
-                className="p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 hover:bg-slate-800/50 transition"
+                className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-5 border-b border-slate-800 last:border-b-0"
               >
-                <div>
-                  <h3 className="font-semibold text-white">{user.name}</h3>
+                <div className="min-w-0">
+                  <h3 className="font-semibold text-white truncate">
+                    {user.name}
+                  </h3>
 
-                  <p className="text-sm text-slate-400">{user.email}</p>
+                  <p className="text-sm text-slate-400 truncate">
+                    {user.email}
+                  </p>
                 </div>
 
-                <span className="text-xs px-3 py-1 rounded-full bg-green-500/20 text-green-400 w-fit">
+                <span className="self-start sm:self-auto px-3 py-1 rounded-full bg-green-500/20 text-green-400 text-xs font-medium">
                   User
                 </span>
               </div>
