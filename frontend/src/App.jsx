@@ -6,13 +6,24 @@ import EditForm from "./components/EditForm";
 
 function App() {
   const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [editingUser, setEditingUser] = useState(null);
+  const [search, setSearch] = useState("");
 
   const fetchUsers = async () => {
-    const data = await getUsers();
-    setUsers(data);
+    try {
+      setLoading(true);
+      const data = await getUsers();
+      setUsers(data);
+      
+    } catch (error) {
+      console.error(error);
+
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -31,7 +42,13 @@ function App() {
     fetchUsers();
   };
 
-     const deleteUser = async (id) => {
+  const deleteUser = async (id) => {
+    const confirmDelete = window.confirm(
+      "Are you sure you want to delete this user?"
+    );
+    
+    if (!confirmDelete) return;
+
       await deleteUserApi(id);
        fetchUsers();
      };
@@ -40,8 +57,13 @@ function App() {
       console.log("Editing user:", user);
        setEditingUser(user);
        };
-
-  
+     
+  const filteredUsers = users.filter(
+    (user) =>
+      user.name.toLowerCase().includes(search.toLowerCase()) ||
+      user.email.toLowerCase().includes(search.toLowerCase()),
+  );
+     const totalUsers = users.length;
   
 
   return (
@@ -60,16 +82,42 @@ function App() {
           addUser={addUser}
         />
         {editingUser && (
-          <EditForm user={editingUser}
+          <EditForm
+            user={editingUser}
+            setEditingUser={setEditingUser}
+            updateUser={updateUser}
+            fetchUsers={fetchUsers}
           />
         )}
 
+        <div className="bg-slate-900 p-5 rounded-xl mb-6">
+          <p className="text-slate-400">Total Users</p>
+          <h2 className="text-3xl font-bold text-cyan-400">{totalUsers}</h2>
+        </div>
+
+        {/* {Search} */}
+
+        <div className="mb-6">
+          <input
+            type="text"
+            placeholder="Search users by name or email..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 outline-none focus:border-cyan-400"
+          />
+        </div>
+
         {/* Users */}
-        <UserList
-          users={users}
-          deleteUser={deleteUser}
-          editUser={editUser}
-        />
+
+        {loading ? (
+          <p className="text-slate-400">Loading users...</p>
+        ) : (
+          <UserList
+            users={filteredUsers}
+            deleteUser={deleteUser}
+            editUser={editUser}
+          />
+        )}
       </div>
     </div>
   );
