@@ -1,4 +1,4 @@
-function UserList({ users , deleteUser ,editUser ,}) {
+function UserList({ users , deleteUser ,editUser }) {
   return (
     <div className="space-y-4">
       {users.map((user) => (
@@ -14,7 +14,7 @@ function UserList({ users , deleteUser ,editUser ,}) {
 
           <div className="flex gap-4">
             <button
-              onClick={() => editUser(user.id)}
+              onClick={() => editUser(user)}
               className="bg-blue-500 hover:bg-blue-400 text-white font-semibold px-4 py-2 rounded-lg"
             >
               Edit

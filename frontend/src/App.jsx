@@ -2,11 +2,13 @@ import { useEffect, useState } from "react";
 import { getUsers, createUser, deleteUser as deleteUserApi,  updateUser, } from "./services/userService";
 import UserForm from "./components/UserForm";
 import UserList from "./components/UserList";
+import EditForm from "./components/EditForm";
 
 function App() {
   const [users, setUsers] = useState([]);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [editingUser, setEditingUser] = useState(null);
 
   const fetchUsers = async () => {
     const data = await getUsers();
@@ -34,16 +36,13 @@ function App() {
        fetchUsers();
      };
     
-  const editUser = async (id) => {
-    const name = prompt("Enter new name:");
-    const email = prompt("Enter new email:");
+      const editUser = (user) => {
+      console.log("Editing user:", user);
+       setEditingUser(user);
+       };
 
-    if (!name || !email) return;
-    
-    await updateUser(id, { name, email });
-
-    fetchUsers();
-  };
+  
+  
 
   return (
     <div className="min-h-screen bg-slate-950 text-white p-8">
@@ -60,6 +59,10 @@ function App() {
           setEmail={setEmail}
           addUser={addUser}
         />
+        {editingUser && (
+          <EditForm user={editingUser}
+          />
+        )}
 
         {/* Users */}
         <UserList
