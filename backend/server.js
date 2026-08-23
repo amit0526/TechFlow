@@ -5,6 +5,8 @@ const cors = require("cors");
 
 const pool = require("./db/database");
 const authRoutes = require("./routes/authRoutes");
+const settingsRoutes = require("./routes/settingsRoutes");
+const authMiddleware = require("./middleware/authMiddleware");
 
 const app = express();
 
@@ -25,10 +27,16 @@ app.use(express.json());
 // =========================
 // Auth Routes
 // =========================
-// POST /api/auth/login
-// POST /api/auth/register
 
 app.use("/api/auth", authRoutes);
+
+// =========================
+// Settings Routes
+// =========================
+// GET   /api/settings
+// PATCH /api/settings
+
+app.use("/api/settings", settingsRoutes);
 
 // =========================
 // Health Check
@@ -68,9 +76,10 @@ app.get("/api/health", async (req, res) => {
 // =========================
 // Get All Users
 // GET /api/users
+// Protected
 // =========================
 
-app.get("/api/users", async (req, res) => {
+app.get("/api/users", authMiddleware, async (req, res) => {
   try {
     const result = await pool.query("SELECT * FROM users ORDER BY id DESC");
 
@@ -87,9 +96,10 @@ app.get("/api/users", async (req, res) => {
 // =========================
 // Get Single User
 // GET /api/users/:id
+// Protected
 // =========================
 
-app.get("/api/users/:id", async (req, res) => {
+app.get("/api/users/:id", authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -114,9 +124,10 @@ app.get("/api/users/:id", async (req, res) => {
 // =========================
 // Create User
 // POST /api/users
+// Protected
 // =========================
 
-app.post("/api/users", async (req, res) => {
+app.post("/api/users", authMiddleware, async (req, res) => {
   try {
     const { name, email } = req.body;
 
@@ -155,9 +166,10 @@ app.post("/api/users", async (req, res) => {
 // =========================
 // Update User
 // PATCH /api/users/:id
+// Protected
 // =========================
 
-app.patch("/api/users/:id", async (req, res) => {
+app.patch("/api/users/:id", authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     const { name, email } = req.body;
@@ -205,9 +217,10 @@ app.patch("/api/users/:id", async (req, res) => {
 // =========================
 // Delete User
 // DELETE /api/users/:id
+// Protected
 // =========================
 
-app.delete("/api/users/:id", async (req, res) => {
+app.delete("/api/users/:id", authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
 

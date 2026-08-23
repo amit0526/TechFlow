@@ -5,13 +5,22 @@ const API_URL = "http://localhost:5000/api/users";
 // =========================
 
 const request = async (url, options = {}) => {
+  const token = localStorage.getItem("techflowToken");
+
   try {
     const response = await fetch(url, {
+      ...options,
       headers: {
         "Content-Type": "application/json",
+
+        ...(token
+          ? {
+              Authorization: `Bearer ${token}`,
+            }
+          : {}),
+
         ...(options.headers || {}),
       },
-      ...options,
     });
 
     let data = null;
@@ -20,6 +29,16 @@ const request = async (url, options = {}) => {
       data = await response.json();
     } catch {
       data = null;
+    }
+
+    if (response.status === 401) {
+      localStorage.removeItem("techflowToken");
+      localStorage.removeItem("techflowAuth");
+      localStorage.removeItem("techflowAdmin");
+
+      window.location.href = "/login";
+
+      throw new Error("Session expired. Please login again.");
     }
 
     if (!response.ok) {
