@@ -49,7 +49,7 @@ function Toast({ message, type = "success", onClose, duration = 3000 }) {
 
   return (
     <div
-      className="fixed right-4 top-20 z-[100] w-[calc(100%-2rem)] max-w-sm"
+      className="fixed right-4 top-20 z-100 w-[calc(100%-2rem)] max-w-sm"
       role="status"
       aria-live="polite"
     >
@@ -68,7 +68,7 @@ function Toast({ message, type = "success", onClose, duration = 3000 }) {
         {/* Message */}
 
         <div className="min-w-0 flex-1 pt-1">
-          <p className={`break-words text-sm font-medium ${styles.text}`}>
+          <p className={`wrap-break-word text-sm font-medium ${styles.text}`}>
             {message}
           </p>
         </div>
