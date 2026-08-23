@@ -17,21 +17,18 @@ function Navbar({ sidebarOpen, setSidebarOpen, onLogout }) {
   useEffect(() => {
     try {
       const savedProfile = localStorage.getItem("techflowProfile");
-      const savedAdmin = localStorage.getItem("techflowAdmin");
 
-      const profileData = savedProfile ? JSON.parse(savedProfile) : null;
-
-      const adminData = savedAdmin ? JSON.parse(savedAdmin) : null;
-
-      const data = profileData || adminData;
-
-      if (data) {
-        setAdmin({
-          name: data.name || "Admin",
-          email: data.email || "admin@techflow.com",
-          role: data.role || "Administrator",
-        });
+      if (!savedProfile) {
+        return;
       }
+
+      const profile = JSON.parse(savedProfile);
+
+      setAdmin({
+        name: profile.name || "Admin",
+        email: profile.email || "admin@techflow.com",
+        role: profile.role || "Administrator",
+      });
     } catch (error) {
       console.error("Failed to load admin profile:", error);
     }
@@ -45,6 +42,7 @@ function Navbar({ sidebarOpen, setSidebarOpen, onLogout }) {
     admin.name
       ?.trim()
       .split(/\s+/)
+      .filter(Boolean)
       .map((word) => word.charAt(0))
       .join("")
       .slice(0, 2)
@@ -56,6 +54,8 @@ function Navbar({ sidebarOpen, setSidebarOpen, onLogout }) {
 
   const handleLogout = () => {
     setProfileOpen(false);
+
+    // Let App.jsx handle authentication state
     onLogout?.();
   };
 
@@ -219,6 +219,16 @@ function Navbar({ sidebarOpen, setSidebarOpen, onLogout }) {
                     className="block rounded-lg px-3 py-2.5 text-sm text-slate-300 transition hover:bg-slate-800 hover:text-white"
                   >
                     ⚙ Settings
+                  </Link>
+
+                  {/* Change Password */}
+
+                  <Link
+                    to="/change-password"
+                    onClick={() => setProfileOpen(false)}
+                    className="block rounded-lg px-3 py-2.5 text-sm text-slate-300 transition hover:bg-slate-800 hover:text-white"
+                  >
+                    🔐 Change Password
                   </Link>
 
                   {/* Divider */}

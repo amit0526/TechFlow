@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 
-
 const DEFAULT_PROFILE = {
   name: "Admin",
   email: "admin@techflow.com",
@@ -14,7 +13,7 @@ function Profile() {
   const [savedProfile, setSavedProfile] = useState(DEFAULT_PROFILE);
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState("");
+  const [saved, setSaved] = useState(false);
 
   // =========================
   // Load Profile
@@ -34,6 +33,15 @@ function Profile() {
 
         setProfile(mergedProfile);
         setSavedProfile(mergedProfile);
+      } else {
+        // Keep Navbar/Auth profile in sync
+        localStorage.setItem(
+          "techflowProfile",
+          JSON.stringify(DEFAULT_PROFILE),
+        );
+
+        setProfile(DEFAULT_PROFILE);
+        setSavedProfile(DEFAULT_PROFILE);
       }
     } catch (error) {
       console.error("Failed to load profile:", error);
@@ -41,15 +49,6 @@ function Profile() {
       setLoaded(true);
     }
   }, []);
-
-  // =========================
-  // Check Changes
-  // =========================
-
-  const hasChanges = useMemo(
-    () => JSON.stringify(profile) !== JSON.stringify(savedProfile),
-    [profile, savedProfile],
-  );
 
   // =========================
   // Update Profile
@@ -61,8 +60,16 @@ function Profile() {
       [key]: value,
     }));
 
-    setMessage("");
+    setSaved(false);
   };
+
+  // =========================
+  // Check Changes
+  // =========================
+
+  const hasChanges = useMemo(() => {
+    return JSON.stringify(profile) !== JSON.stringify(savedProfile);
+  }, [profile, savedProfile]);
 
   // =========================
   // Save Profile
@@ -73,7 +80,7 @@ function Profile() {
     const trimmedEmail = profile.email.trim();
 
     if (!trimmedName || !trimmedEmail) {
-      setMessage("Name and email are required.");
+      setSaved(false);
       return;
     }
 
@@ -84,22 +91,41 @@ function Profile() {
         ...profile,
         name: trimmedName,
         email: trimmedEmail,
-        phone: profile.phone.trim(),
-        bio: profile.bio.trim(),
       };
 
       localStorage.setItem("techflowProfile", JSON.stringify(updatedProfile));
 
+      // Keep authentication admin data in sync
+      const currentAdmin = localStorage.getItem("techflowAdmin");
+
+      let adminData = {};
+
+      try {
+        adminData = currentAdmin ? JSON.parse(currentAdmin) : {};
+      } catch {
+        adminData = {};
+      }
+
+      localStorage.setItem(
+        "techflowAdmin",
+        JSON.stringify({
+          ...adminData,
+          name: updatedProfile.name,
+          email: updatedProfile.email,
+          role: updatedProfile.role,
+        }),
+      );
+
       setProfile(updatedProfile);
       setSavedProfile(updatedProfile);
-      setMessage("Profile saved successfully.");
+      setSaved(true);
 
       setTimeout(() => {
-        setMessage("");
+        setSaved(false);
       }, 2500);
     } catch (error) {
       console.error("Failed to save profile:", error);
-      setMessage("Failed to save profile.");
+      setSaved(false);
     } finally {
       setSaving(false);
     }
@@ -111,7 +137,7 @@ function Profile() {
 
   const discardChanges = () => {
     setProfile(savedProfile);
-    setMessage("");
+    setSaved(false);
   };
 
   // =========================
@@ -133,7 +159,7 @@ function Profile() {
 
   if (!loaded) {
     return (
-      <div className="mx-auto w-full max-w-6xl">
+      <div className="w-full max-w-6xl mx-auto">
         <div className="rounded-xl border border-slate-800 bg-slate-900 p-10 text-center">
           <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-2 border-slate-700 border-t-cyan-400" />
 
@@ -144,8 +170,10 @@ function Profile() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-6xl">
-      {/* Header */}
+    <div className="w-full max-w-6xl mx-auto">
+      {/* =========================
+          Header
+      ========================= */}
 
       <div className="mb-8">
         <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">
@@ -162,7 +190,9 @@ function Profile() {
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[280px_1fr]">
-        {/* Profile Card */}
+        {/* =========================
+            Profile Card
+        ========================= */}
 
         <div className="h-fit rounded-xl border border-slate-800 bg-slate-900 p-6">
           <div className="flex flex-col items-center text-center">
@@ -205,7 +235,9 @@ function Profile() {
           </div>
         </div>
 
-        {/* Profile Form */}
+        {/* =========================
+            Profile Form
+        ========================= */}
 
         <div className="rounded-xl border border-slate-800 bg-slate-900">
           <div className="border-b border-slate-800 p-6">
@@ -295,17 +327,17 @@ function Profile() {
                 Role
               </label>
 
-              <input
+              <select
                 id="profile-role"
-                type="text"
                 value={profile.role}
-                disabled
-                className="w-full cursor-not-allowed rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-500 outline-none"
-              />
-
-              <p className="mt-1.5 text-xs text-slate-600">
-                Your administrator role cannot be changed from this page.
-              </p>
+                onChange={(event) => updateProfile("role", event.target.value)}
+                disabled={saving}
+                className="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-400 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <option>Administrator</option>
+                <option>Manager</option>
+                <option>Editor</option>
+              </select>
             </div>
 
             {/* Bio */}
@@ -332,16 +364,15 @@ function Profile() {
             {/* Actions */}
 
             <div className="flex flex-col gap-3 border-t border-slate-800 pt-5 sm:flex-row sm:items-center sm:justify-end">
-              {message && (
-                <p
-                  className={`mr-auto text-sm ${
-                    message.includes("required") || message.includes("Failed")
-                      ? "text-red-400"
-                      : "text-emerald-400"
-                  }`}
-                >
-                  {message.includes("successfully") ? "✓ " : ""}
-                  {message}
+              {hasChanges && !saved && (
+                <p className="text-sm text-amber-400 sm:mr-auto">
+                  You have unsaved changes.
+                </p>
+              )}
+
+              {saved && (
+                <p className="text-sm text-emerald-400 sm:mr-auto">
+                  ✓ Profile saved successfully.
                 </p>
               )}
 
@@ -349,7 +380,7 @@ function Profile() {
                 type="button"
                 onClick={discardChanges}
                 disabled={!hasChanges || saving}
-                className="rounded-lg border border-slate-700 px-6 py-3 text-sm font-medium text-slate-300 transition hover:bg-slate-800 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                className="rounded-lg border border-slate-700 px-5 py-2.5 text-sm font-medium text-slate-300 transition hover:bg-slate-800 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
               >
                 Discard
               </button>
@@ -358,7 +389,7 @@ function Profile() {
                 type="button"
                 onClick={handleSave}
                 disabled={!hasChanges || saving}
-                className="rounded-lg bg-cyan-400 px-6 py-3 text-sm font-bold text-slate-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-40"
+                className="rounded-lg bg-cyan-400 px-6 py-2.5 text-sm font-bold text-slate-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {saving ? "Saving..." : "Save Profile"}
               </button>

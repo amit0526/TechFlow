@@ -7,46 +7,118 @@ function Login({ onLogin }) {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = (event) => {
-    event.preventDefault();
+        const handleLogin = (event) => {
+          event.preventDefault();
 
-    setError("");
+          setError("");
 
-    const trimmedEmail = email.trim().toLowerCase();
+          const trimmedEmail = email.trim().toLowerCase();
 
-    if (!trimmedEmail || !password) {
-      setError("Email and password are required.");
-      return;
-    }
+          if (!trimmedEmail || !password) {
+            setError("Email and password are required.");
+            return;
+          }
 
-    setLoading(true);
+          setLoading(true);
 
-    // Demo authentication
-    if (trimmedEmail === "admin@techflow.com" && password === "admin123") {
-      const admin = {
-        name: "Admin",
-        email: "admin@techflow.com",
-        role: "Administrator",
-      };
+          try {
+            // =========================
+            // Get Saved Profile
+            // =========================
 
-      localStorage.setItem("techflowAuth", "true");
-      localStorage.setItem("techflowAdmin", JSON.stringify(admin));
+            const storedProfile = localStorage.getItem("techflowProfile");
 
-      // IMPORTANT:
-      // App.jsx authentication state update karega.
-      onLogin?.();
+            let profile = null;
 
-      return;
-    }
+            if (storedProfile) {
+              try {
+                profile = JSON.parse(storedProfile);
+              } catch (error) {
+                console.error("Invalid profile data:", error);
+              }
+            }
 
-    setError("Invalid email or password.");
-    setLoading(false);
-  };
+            // =========================
+            // First-Time Default Account
+            // =========================
+
+            if (!profile || !profile.email) {
+              profile = {
+                name: "Admin",
+                email: "admin@techflow.com",
+                role: "Administrator",
+                phone: "",
+                bio: "TechFlow system administrator.",
+              };
+
+              localStorage.setItem("techflowProfile", JSON.stringify(profile));
+            }
+
+            // =========================
+            // Saved Email
+            // =========================
+
+            const savedEmail = profile.email.trim().toLowerCase();
+
+            // =========================
+            // Saved Password
+            // =========================
+
+            const savedPassword =
+              localStorage.getItem("techflowPassword") || "admin123";
+
+            // =========================
+            // Verify Email
+            // =========================
+
+            if (trimmedEmail !== savedEmail) {
+              setError("Invalid email address.");
+              setLoading(false);
+              return;
+            }
+
+            // =========================
+            // Verify Password
+            // =========================
+
+            if (password !== savedPassword) {
+              setError("Invalid password.");
+              setLoading(false);
+              return;
+            }
+
+            // =========================
+            // Login Successful
+            // =========================
+
+            const admin = {
+              name: profile.name || "Admin",
+              email: savedEmail,
+              role: profile.role || "Administrator",
+            };
+
+            localStorage.setItem("techflowAuth", "true");
+
+            // Keep admin session information synced
+            localStorage.setItem("techflowAdmin", JSON.stringify(admin));
+
+            // App.jsx will update authentication state
+            onLogin?.();
+          } catch (error) {
+            console.error("Login failed:", error);
+
+            setError("Unable to login. Please try again.");
+            setLoading(false);
+          }
+        };
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#020617] px-4 text-white">
+      
       <div className="w-full max-w-md">
-        {/* Logo */}
+        {/* =========================
+            Logo
+        ========================= */}
 
         <div className="mb-8 text-center">
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-cyan-400/10 text-2xl text-cyan-400">
@@ -58,7 +130,9 @@ function Login({ onLogin }) {
           <p className="mt-1 text-sm text-slate-500">Admin Panel</p>
         </div>
 
-        {/* Login Card */}
+        {/* =========================
+            Login Card
+        ========================= */}
 
         <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-2xl sm:p-8">
           <div className="mb-6">
@@ -73,6 +147,10 @@ function Login({ onLogin }) {
             </p>
           </div>
 
+          {/* =========================
+              Error
+          ========================= */}
+
           {error && (
             <div
               className="mb-5 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300"
@@ -81,6 +159,10 @@ function Login({ onLogin }) {
               {error}
             </div>
           )}
+
+          {/* =========================
+              Form
+          ========================= */}
 
           <form onSubmit={handleLogin} className="space-y-5">
             {/* Email */}
@@ -144,7 +226,7 @@ function Login({ onLogin }) {
               </div>
             </div>
 
-            {/* Login */}
+            {/* Login Button */}
 
             <button
               type="submit"
@@ -155,11 +237,13 @@ function Login({ onLogin }) {
             </button>
           </form>
 
-          {/* Demo Credentials */}
+          {/* =========================
+              Demo Credentials
+          ========================= */}
 
           <div className="mt-6 rounded-lg border border-slate-800 bg-slate-950 p-4">
             <p className="text-xs font-medium text-slate-400">
-              Demo credentials
+              First-time demo credentials
             </p>
 
             <p className="mt-2 text-xs text-slate-500">
@@ -168,6 +252,11 @@ function Login({ onLogin }) {
 
             <p className="mt-1 text-xs text-slate-500">
               Password: <span className="text-slate-300">admin123</span>
+            </p>
+
+            <p className="mt-3 text-[11px] text-slate-600">
+              After changing your profile email or password, use the updated
+              credentials.
             </p>
           </div>
         </div>

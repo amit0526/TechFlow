@@ -9,6 +9,7 @@ import Users from "./pages/Users";
 import Settings from "./pages/Settings";
 import Profile from "./pages/Profile";
 import Login from "./pages/Login";
+import ChangePassword from "./pages/ChangePassword";
 
 function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -106,7 +107,7 @@ function AdminPanel({ sidebarOpen, setSidebarOpen, onLogout }) {
 
             <Route path="/profile" element={<Profile />} />
 
-            <Route path="*" element={<NotFound />} />
+            <Route path="/change-password" element={<ChangePassword />} />
           </Routes>
         </main>
       </div>
