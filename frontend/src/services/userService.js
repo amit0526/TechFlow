@@ -65,7 +65,7 @@ export const createUser = async (userData) => {
 
 export const updateUser = async (id, userData) => {
   return request(`${API_URL}/${id}`, {
-    method: "PUT",
+    method: "PATCH",
     body: JSON.stringify(userData),
   });
 };
