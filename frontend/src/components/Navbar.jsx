@@ -117,13 +117,13 @@ function Navbar({ sidebarOpen, setSidebarOpen }) {
                     ⚙ Settings
                   </Link>
 
-                  <button
-                    type="button"
+                  <Link
+                    to="/profile"
                     onClick={() => setProfileOpen(false)}
-                    className="w-full rounded-lg px-3 py-2 text-left text-sm text-slate-300 transition hover:bg-slate-800 hover:text-white"
+                    className="block rounded-lg px-3 py-2 text-sm text-slate-300 transition hover:bg-slate-800 hover:text-white"
                   >
                     👤 Profile
-                  </button>
+                  </Link>
                 </div>
               </div>
             </>

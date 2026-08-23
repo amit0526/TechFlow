@@ -1,46 +1,152 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+
+
+const DEFAULT_PROFILE = {
+  name: "Admin",
+  email: "admin@techflow.com",
+  role: "Administrator",
+  phone: "",
+  bio: "TechFlow system administrator.",
+};
 
 function Profile() {
-  const [profile, setProfile] = useState({
-    name: "Admin",
-    email: "admin@techflow.com",
-    role: "Administrator",
-    phone: "",
-    bio: "TechFlow system administrator.",
-  });
+  const [profile, setProfile] = useState(DEFAULT_PROFILE);
+  const [savedProfile, setSavedProfile] = useState(DEFAULT_PROFILE);
+  const [loaded, setLoaded] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState("");
 
-  const [saved, setSaved] = useState(false);
+  // =========================
+  // Load Profile
+  // =========================
+
+  useEffect(() => {
+    try {
+      const storedProfile = localStorage.getItem("techflowProfile");
+
+      if (storedProfile) {
+        const parsedProfile = JSON.parse(storedProfile);
+
+        const mergedProfile = {
+          ...DEFAULT_PROFILE,
+          ...parsedProfile,
+        };
+
+        setProfile(mergedProfile);
+        setSavedProfile(mergedProfile);
+      }
+    } catch (error) {
+      console.error("Failed to load profile:", error);
+    } finally {
+      setLoaded(true);
+    }
+  }, []);
+
+  // =========================
+  // Check Changes
+  // =========================
+
+  const hasChanges = useMemo(
+    () => JSON.stringify(profile) !== JSON.stringify(savedProfile),
+    [profile, savedProfile],
+  );
+
+  // =========================
+  // Update Profile
+  // =========================
 
   const updateProfile = (key, value) => {
-    setProfile((prev) => ({
-      ...prev,
+    setProfile((previous) => ({
+      ...previous,
       [key]: value,
     }));
 
-    setSaved(false);
+    setMessage("");
   };
+
+  // =========================
+  // Save Profile
+  // =========================
 
   const handleSave = () => {
-    localStorage.setItem("techflowProfile", JSON.stringify(profile));
+    const trimmedName = profile.name.trim();
+    const trimmedEmail = profile.email.trim();
 
-    setSaved(true);
+    if (!trimmedName || !trimmedEmail) {
+      setMessage("Name and email are required.");
+      return;
+    }
 
-    setTimeout(() => {
-      setSaved(false);
-    }, 2500);
+    try {
+      setSaving(true);
+
+      const updatedProfile = {
+        ...profile,
+        name: trimmedName,
+        email: trimmedEmail,
+        phone: profile.phone.trim(),
+        bio: profile.bio.trim(),
+      };
+
+      localStorage.setItem("techflowProfile", JSON.stringify(updatedProfile));
+
+      setProfile(updatedProfile);
+      setSavedProfile(updatedProfile);
+      setMessage("Profile saved successfully.");
+
+      setTimeout(() => {
+        setMessage("");
+      }, 2500);
+    } catch (error) {
+      console.error("Failed to save profile:", error);
+      setMessage("Failed to save profile.");
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const initials = profile.name
-    .trim()
-    .split(/\s+/)
-    .map((word) => word.charAt(0))
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
+  // =========================
+  // Discard Changes
+  // =========================
+
+  const discardChanges = () => {
+    setProfile(savedProfile);
+    setMessage("");
+  };
+
+  // =========================
+  // Initials
+  // =========================
+
+  const initials =
+    profile.name
+      ?.trim()
+      .split(/\s+/)
+      .map((word) => word.charAt(0))
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() || "AD";
+
+  // =========================
+  // Loading
+  // =========================
+
+  if (!loaded) {
+    return (
+      <div className="mx-auto w-full max-w-6xl">
+        <div className="rounded-xl border border-slate-800 bg-slate-900 p-10 text-center">
+          <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-2 border-slate-700 border-t-cyan-400" />
+
+          <p className="text-sm text-slate-400">Loading profile...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="w-full max-w-6xl mx-auto">
+    <div className="mx-auto w-full max-w-6xl">
       {/* Header */}
+
       <div className="mb-8">
         <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">
           Account
@@ -57,11 +163,13 @@ function Profile() {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[280px_1fr]">
         {/* Profile Card */}
+
         <div className="h-fit rounded-xl border border-slate-800 bg-slate-900 p-6">
           <div className="flex flex-col items-center text-center">
             {/* Avatar */}
+
             <div className="flex h-24 w-24 items-center justify-center rounded-full bg-cyan-400/10 text-2xl font-bold text-cyan-400 ring-1 ring-cyan-400/20">
-              {initials || "AD"}
+              {initials}
             </div>
 
             <h2 className="mt-4 text-xl font-semibold text-white">
@@ -78,6 +186,7 @@ function Profile() {
           </div>
 
           {/* Status */}
+
           <div className="mt-6 border-t border-slate-800 pt-5">
             <div className="flex items-center justify-between">
               <span className="text-sm text-slate-400">Account Status</span>
@@ -97,6 +206,7 @@ function Profile() {
         </div>
 
         {/* Profile Form */}
+
         <div className="rounded-xl border border-slate-800 bg-slate-900">
           <div className="border-b border-slate-800 p-6">
             <h2 className="text-xl font-semibold text-white">
@@ -110,6 +220,7 @@ function Profile() {
 
           <div className="space-y-6 p-6">
             {/* Name */}
+
             <div>
               <label
                 htmlFor="profile-name"
@@ -122,13 +233,16 @@ function Profile() {
                 id="profile-name"
                 type="text"
                 value={profile.name}
-                onChange={(e) => updateProfile("name", e.target.value)}
+                onChange={(event) => updateProfile("name", event.target.value)}
                 placeholder="Enter your name"
-                className="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-400"
+                autoComplete="name"
+                disabled={saving}
+                className="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-400 disabled:cursor-not-allowed disabled:opacity-50"
               />
             </div>
 
             {/* Email */}
+
             <div>
               <label
                 htmlFor="profile-email"
@@ -141,13 +255,16 @@ function Profile() {
                 id="profile-email"
                 type="email"
                 value={profile.email}
-                onChange={(e) => updateProfile("email", e.target.value)}
+                onChange={(event) => updateProfile("email", event.target.value)}
                 placeholder="Enter your email"
-                className="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-400"
+                autoComplete="email"
+                disabled={saving}
+                className="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-400 disabled:cursor-not-allowed disabled:opacity-50"
               />
             </div>
 
             {/* Phone */}
+
             <div>
               <label
                 htmlFor="profile-phone"
@@ -160,13 +277,16 @@ function Profile() {
                 id="profile-phone"
                 type="tel"
                 value={profile.phone}
-                onChange={(e) => updateProfile("phone", e.target.value)}
+                onChange={(event) => updateProfile("phone", event.target.value)}
                 placeholder="Enter phone number"
-                className="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-400"
+                autoComplete="tel"
+                disabled={saving}
+                className="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-400 disabled:cursor-not-allowed disabled:opacity-50"
               />
             </div>
 
             {/* Role */}
+
             <div>
               <label
                 htmlFor="profile-role"
@@ -175,19 +295,21 @@ function Profile() {
                 Role
               </label>
 
-              <select
+              <input
                 id="profile-role"
+                type="text"
                 value={profile.role}
-                onChange={(e) => updateProfile("role", e.target.value)}
-                className="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-400"
-              >
-                <option>Administrator</option>
-                <option>Manager</option>
-                <option>Editor</option>
-              </select>
+                disabled
+                className="w-full cursor-not-allowed rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-500 outline-none"
+              />
+
+              <p className="mt-1.5 text-xs text-slate-600">
+                Your administrator role cannot be changed from this page.
+              </p>
             </div>
 
             {/* Bio */}
+
             <div>
               <label
                 htmlFor="profile-bio"
@@ -200,26 +322,45 @@ function Profile() {
                 id="profile-bio"
                 rows="4"
                 value={profile.bio}
-                onChange={(e) => updateProfile("bio", e.target.value)}
+                onChange={(event) => updateProfile("bio", event.target.value)}
                 placeholder="Write something about yourself..."
-                className="w-full resize-none rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-400"
+                disabled={saving}
+                className="w-full resize-none rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-400 disabled:cursor-not-allowed disabled:opacity-50"
               />
             </div>
 
-            {/* Save */}
+            {/* Actions */}
+
             <div className="flex flex-col gap-3 border-t border-slate-800 pt-5 sm:flex-row sm:items-center sm:justify-end">
-              {saved && (
-                <p className="text-sm text-emerald-400">
-                  ✓ Profile saved successfully.
+              {message && (
+                <p
+                  className={`mr-auto text-sm ${
+                    message.includes("required") || message.includes("Failed")
+                      ? "text-red-400"
+                      : "text-emerald-400"
+                  }`}
+                >
+                  {message.includes("successfully") ? "✓ " : ""}
+                  {message}
                 </p>
               )}
 
               <button
                 type="button"
-                onClick={handleSave}
-                className="rounded-lg bg-cyan-400 px-6 py-3 text-sm font-bold text-slate-950 transition hover:bg-cyan-300"
+                onClick={discardChanges}
+                disabled={!hasChanges || saving}
+                className="rounded-lg border border-slate-700 px-6 py-3 text-sm font-medium text-slate-300 transition hover:bg-slate-800 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
               >
-                Save Profile
+                Discard
+              </button>
+
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={!hasChanges || saving}
+                className="rounded-lg bg-cyan-400 px-6 py-3 text-sm font-bold text-slate-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {saving ? "Saving..." : "Save Profile"}
               </button>
             </div>
           </div>

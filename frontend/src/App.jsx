@@ -5,6 +5,7 @@ import AdminLayout from "./layouts/AdminLayout";
 import Dashboard from "./pages/Dashboard";
 import Users from "./pages/Users";
 import Settings from "./pages/Settings";
+import Profile from "./pages/Profile";
 
 function App() {
   return (
@@ -14,6 +15,7 @@ function App() {
           <Route path="/" element={<Dashboard />} />
           <Route path="/users" element={<Users />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/profile" element={<Profile />} />
         </Route>
 
         <Route
