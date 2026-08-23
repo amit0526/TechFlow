@@ -2,7 +2,9 @@ require("dotenv").config();
 
 const express = require("express");
 const cors = require("cors");
-const { Pool } = require("pg");
+
+const pool = require("./db/database");
+const authRoutes = require("./routes/authRoutes");
 
 const app = express();
 
@@ -21,20 +23,12 @@ app.use(
 app.use(express.json());
 
 // =========================
-// PostgreSQL
+// Auth Routes
 // =========================
+// POST /api/auth/login
+// POST /api/auth/register
 
-const pool = new Pool({
-  user: process.env.DB_USER,
-  host: process.env.DB_HOST,
-  database: process.env.DB_NAME,
-  password: process.env.DB_PASSWORD,
-  port: Number(process.env.DB_PORT) || 5432,
-});
-
-pool.on("error", (error) => {
-  console.error("Unexpected PostgreSQL error:", error);
-});
+app.use("/api/auth", authRoutes);
 
 // =========================
 // Health Check
@@ -44,6 +38,31 @@ app.get("/", (req, res) => {
   res.json({
     message: "TechFlow backend is running 🚀",
   });
+});
+
+// =========================
+// Database Health Check
+// GET /api/health
+// =========================
+
+app.get("/api/health", async (req, res) => {
+  try {
+    const result = await pool.query("SELECT NOW() AS current_time");
+
+    res.json({
+      status: "online",
+      database: "connected",
+      time: result.rows[0].current_time,
+    });
+  } catch (error) {
+    console.error("Database health check:", error);
+
+    res.status(500).json({
+      status: "offline",
+      database: "disconnected",
+      error: "Database connection failed",
+    });
+  }
 });
 
 // =========================
@@ -107,16 +126,25 @@ app.post("/api/users", async (req, res) => {
       });
     }
 
+    const cleanName = name.trim();
+    const cleanEmail = email.trim().toLowerCase();
+
     const result = await pool.query(
       `INSERT INTO users (name, email)
        VALUES ($1, $2)
        RETURNING *`,
-      [name.trim(), email.trim()],
+      [cleanName, cleanEmail],
     );
 
     res.status(201).json(result.rows[0]);
   } catch (error) {
     console.error("POST /api/users:", error);
+
+    if (error.code === "23505") {
+      return res.status(409).json({
+        error: "Email already exists",
+      });
+    }
 
     res.status(500).json({
       error: "Failed to add user",
@@ -140,13 +168,16 @@ app.patch("/api/users/:id", async (req, res) => {
       });
     }
 
+    const cleanName = name.trim();
+    const cleanEmail = email.trim().toLowerCase();
+
     const result = await pool.query(
       `UPDATE users
        SET name = $1,
            email = $2
        WHERE id = $3
        RETURNING *`,
-      [name.trim(), email.trim(), id],
+      [cleanName, cleanEmail, id],
     );
 
     if (result.rows.length === 0) {
@@ -158,6 +189,12 @@ app.patch("/api/users/:id", async (req, res) => {
     res.json(result.rows[0]);
   } catch (error) {
     console.error("PATCH /api/users/:id:", error);
+
+    if (error.code === "23505") {
+      return res.status(409).json({
+        error: "Email already exists",
+      });
+    }
 
     res.status(500).json({
       error: "Failed to update user",
@@ -205,6 +242,19 @@ app.delete("/api/users/:id", async (req, res) => {
 app.use((req, res) => {
   res.status(404).json({
     error: "Route not found",
+    path: req.originalUrl,
+  });
+});
+
+// =========================
+// Global Error Handler
+// =========================
+
+app.use((error, req, res, next) => {
+  console.error("Unhandled server error:", error);
+
+  res.status(500).json({
+    error: "Internal server error",
   });
 });
 
