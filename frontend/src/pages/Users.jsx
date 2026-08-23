@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
   getUsers,
@@ -12,9 +12,11 @@ import UserList from "../components/UserList";
 import EditForm from "../components/EditForm";
 import Toast from "../components/Toast";
 
+const USERS_PER_PAGE = 5;
+
 function Users() {
   const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -22,100 +24,88 @@ function Users() {
   const [editingUser, setEditingUser] = useState(null);
   const [search, setSearch] = useState("");
 
-  const [error, setError] = useState("");
-
   const [currentPage, setCurrentPage] = useState(1);
-
-  const usersPerPage = 5;
-
-  // =========================
-  // Toast
-  // =========================
 
   const [toast, setToast] = useState({
     message: "",
     type: "success",
   });
 
-  const showToast = (message, type = "success") => {
+  // =========================
+  // Toast
+  // =========================
+
+  const showToast = useCallback((message, type = "success") => {
     setToast({
       message,
       type,
     });
+  }, []);
 
-    setTimeout(() => {
-      setToast({
-        message: "",
-        type: "success",
-      });
-    }, 3000);
-  };
-
-  const closeToast = () => {
+  const closeToast = useCallback(() => {
     setToast({
       message: "",
       type: "success",
     });
-  };
+  }, []);
 
   // =========================
   // Fetch Users
   // =========================
 
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     try {
       setLoading(true);
-      setError("");
 
       const data = await getUsers();
 
-      setUsers(data);
+      setUsers(Array.isArray(data) ? data : []);
     } catch (error) {
-      console.error(error);
-      setError("Failed to load users. Please try again.");
+      console.error("Fetch users error:", error);
+
+      showToast("Failed to load users. Please try again.", "error");
     } finally {
       setLoading(false);
     }
-  };
+  }, [showToast]);
 
   useEffect(() => {
     fetchUsers();
-  }, []);
+  }, [fetchUsers]);
 
   // =========================
   // Add User
   // =========================
 
-  const addUser = async (e) => {
-    e.preventDefault();
+  const addUser = async (event) => {
+    event.preventDefault();
 
-    if (!name.trim() || !email.trim()) {
-      setError("Name and email are required.");
+    const trimmedName = name.trim();
+    const trimmedEmail = email.trim();
+
+    if (!trimmedName || !trimmedEmail) {
+      showToast("Name and email are required.", "error");
+
       return;
     }
 
     try {
-      setError("");
-
       await createUser({
-        name: name.trim(),
-        email: email.trim(),
+        name: trimmedName,
+        email: trimmedEmail,
       });
 
       setName("");
       setEmail("");
-
       setCurrentPage(1);
 
       await fetchUsers();
 
-      showToast("User added successfully!");
+      showToast("User added successfully.");
     } catch (error) {
-      console.error(error);
+      console.error("Add user error:", error);
 
-      setError("Failed to add user. Please try again.");
-
-      showToast("Failed to add user.", "error");
+      showToast("Failed to add user. Please try again.", "error");
     }
   };
 
@@ -124,28 +114,22 @@ function Users() {
   // =========================
 
   const deleteUser = async (id) => {
-    const confirmDelete = window.confirm(
+    const confirmed = window.confirm(
       "Are you sure you want to delete this user?",
     );
 
-    if (!confirmDelete) return;
+    if (!confirmed) return;
 
     try {
-      setError("");
-
       await deleteUserApi(id);
 
       await fetchUsers();
 
-      setCurrentPage((page) => Math.max(page - 1, 1));
-
-      showToast("User deleted successfully!");
+      showToast("User deleted successfully.");
     } catch (error) {
-      console.error(error);
+      console.error("Delete user error:", error);
 
-      setError("Failed to delete user. Please try again.");
-
-      showToast("Failed to delete user.", "error");
+      showToast("Failed to delete user. Please try again.", "error");
     }
   };
 
@@ -161,41 +145,78 @@ function Users() {
   // Search
   // =========================
 
-  const filteredUsers = users.filter((user) => {
-    const searchText = search.toLowerCase().trim();
+  const filteredUsers = useMemo(() => {
+    const searchText = search.trim().toLowerCase();
 
-    return (
-      user.name?.toLowerCase().includes(searchText) ||
-      user.email?.toLowerCase().includes(searchText)
-    );
-  });
+    if (!searchText) {
+      return users;
+    }
+
+    return users.filter((user) => {
+      const userName = user.name?.toLowerCase() || "";
+
+      const userEmail = user.email?.toLowerCase() || "";
+
+      return userName.includes(searchText) || userEmail.includes(searchText);
+    });
+  }, [users, search]);
 
   // =========================
   // Pagination
   // =========================
 
-  const totalPages = Math.ceil(filteredUsers.length / usersPerPage);
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredUsers.length / USERS_PER_PAGE),
+  );
 
-  const startIndex = (currentPage - 1) * usersPerPage;
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+  const startIndex = (currentPage - 1) * USERS_PER_PAGE;
 
   const paginatedUsers = filteredUsers.slice(
     startIndex,
-    startIndex + usersPerPage,
+    startIndex + USERS_PER_PAGE,
   );
 
   const totalUsers = users.length;
 
   const showingFrom = filteredUsers.length === 0 ? 0 : startIndex + 1;
 
-  const showingTo = Math.min(startIndex + usersPerPage, filteredUsers.length);
+  const showingTo = Math.min(startIndex + USERS_PER_PAGE, filteredUsers.length);
 
   // =========================
-  // Render
+  // Pagination
   // =========================
+
+  const goToPreviousPage = () => {
+    setCurrentPage((page) => Math.max(page - 1, 1));
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  };
+
+  const goToNextPage = () => {
+    setCurrentPage((page) => Math.min(page + 1, totalPages));
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  };
 
   return (
     <div className="w-full max-w-6xl mx-auto">
-      {/* Toast */}
+      {/* =========================
+          Toast
+      ========================= */}
+
       <Toast message={toast.message} type={toast.type} onClose={closeToast} />
 
       {/* =========================
@@ -203,20 +224,18 @@ function Users() {
       ========================= */}
 
       <div className="mb-8">
-        <h1 className="text-3xl sm:text-4xl font-bold text-cyan-400">Users</h1>
+        <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">
+          Management
+        </p>
 
-        <p className="text-slate-400 mt-2">Manage your users</p>
+        <h1 className="mt-1 text-3xl font-bold text-white sm:text-4xl">
+          Users
+        </h1>
+
+        <p className="mt-2 text-slate-400">
+          Manage users, accounts and access.
+        </p>
       </div>
-
-      {/* =========================
-          Error
-      ========================= */}
-
-      {error && (
-        <div className="mb-6 bg-red-900/20 border border-red-500/50 rounded-xl p-4">
-          <p className="text-red-400">{error}</p>
-        </div>
-      )}
 
       {/* =========================
           Add User
@@ -228,6 +247,7 @@ function Users() {
         setName={setName}
         setEmail={setEmail}
         addUser={addUser}
+        loading={loading}
       />
 
       {/* =========================
@@ -240,7 +260,12 @@ function Users() {
           setEditingUser={setEditingUser}
           updateUser={updateUser}
           fetchUsers={fetchUsers}
-          showToast={showToast}
+          onSuccess={() => {
+            showToast("User updated successfully.");
+          }}
+          onError={() => {
+            showToast("Failed to update user. Please try again.", "error");
+          }}
         />
       )}
 
@@ -248,23 +273,23 @@ function Users() {
           Stats
       ========================= */}
 
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 mb-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+      <div className="mb-6 rounded-xl border border-slate-800 bg-slate-900 p-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-slate-400 text-sm">Total Users</p>
+            <p className="text-sm text-slate-400">Total Users</p>
 
-            <h2 className="text-3xl font-bold text-cyan-400 mt-1">
+            <h2 className="mt-1 text-3xl font-bold text-cyan-400">
               {totalUsers}
             </h2>
           </div>
 
           <div className="text-sm text-slate-400">
             Showing{" "}
-            <span className="text-white font-medium">
+            <span className="font-medium text-white">
               {showingFrom}-{showingTo}
             </span>{" "}
             of{" "}
-            <span className="text-white font-medium">
+            <span className="font-medium text-white">
               {filteredUsers.length}
             </span>
           </div>
@@ -276,33 +301,45 @@ function Users() {
       ========================= */}
 
       <div className="mb-6">
+        <label
+          htmlFor="user-search"
+          className="mb-2 block text-xs font-medium text-slate-400"
+        >
+          Search Users
+        </label>
+
         <input
-          type="text"
-          placeholder="Search users by name or email..."
+          id="user-search"
+          type="search"
+          placeholder="Search by name or email..."
           value={search}
-          onChange={(e) => {
-            setSearch(e.target.value);
+          onChange={(event) => {
+            setSearch(event.target.value);
             setCurrentPage(1);
           }}
-          className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 text-white placeholder:text-slate-500 outline-none focus:border-cyan-400 transition"
+          className="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-400"
         />
       </div>
 
       {/* =========================
-          Users
+          User List
       ========================= */}
 
       {loading ? (
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-8 text-center">
-          <p className="text-slate-400">Loading users...</p>
+        <div className="rounded-xl border border-slate-800 bg-slate-900 p-10 text-center">
+          <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-2 border-slate-700 border-t-cyan-400" />
+
+          <p className="text-sm text-slate-400">Loading users...</p>
         </div>
       ) : filteredUsers.length === 0 ? (
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-10 text-center">
-          <div className="text-4xl mb-3">👤</div>
+        <div className="rounded-xl border border-slate-800 bg-slate-900 p-10 text-center">
+          <div className="mb-3 text-4xl">{search ? "🔎" : "👤"}</div>
 
-          <h2 className="text-xl font-semibold text-white">No users found</h2>
+          <h2 className="text-lg font-semibold text-white">
+            {search ? "No users found" : "No users yet"}
+          </h2>
 
-          <p className="text-slate-400 mt-2">
+          <p className="mt-2 text-sm text-slate-500">
             {search
               ? "Try searching with a different name or email."
               : "Add your first user to get started."}
@@ -321,39 +358,27 @@ function Users() {
           ========================= */}
 
           {totalPages > 1 && (
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-6">
+            <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <button
-                onClick={() => {
-                  setCurrentPage((page) => Math.max(page - 1, 1));
-
-                  window.scrollTo({
-                    top: 0,
-                    behavior: "smooth",
-                  });
-                }}
+                type="button"
+                onClick={goToPreviousPage}
                 disabled={currentPage === 1}
-                className="w-full sm:w-auto px-4 py-2 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                className="w-full rounded-lg border border-slate-700 bg-slate-800 px-5 py-2.5 text-sm font-medium text-slate-300 transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
               >
                 ← Previous
               </button>
 
-              <span className="px-4 py-2 text-sm text-slate-400">
+              <span className="rounded-lg px-4 py-2 text-sm text-slate-400">
                 Page{" "}
-                <span className="text-white font-medium">{currentPage}</span> of{" "}
-                <span className="text-white font-medium">{totalPages}</span>
+                <span className="font-medium text-white">{currentPage}</span> of{" "}
+                <span className="font-medium text-white">{totalPages}</span>
               </span>
 
               <button
-                onClick={() => {
-                  setCurrentPage((page) => Math.min(page + 1, totalPages));
-
-                  window.scrollTo({
-                    top: 0,
-                    behavior: "smooth",
-                  });
-                }}
+                type="button"
+                onClick={goToNextPage}
                 disabled={currentPage === totalPages}
-                className="w-full sm:w-auto px-4 py-2 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                className="w-full rounded-lg border border-slate-700 bg-slate-800 px-5 py-2.5 text-sm font-medium text-slate-300 transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
               >
                 Next →
               </button>

@@ -1,55 +1,81 @@
-const API_URL = "http://localhost:5000";
+const API_URL = "http://localhost:5000/api/users";
+
+// =========================
+// API Helper
+// =========================
+
+const request = async (url, options = {}) => {
+  try {
+    const response = await fetch(url, {
+      headers: {
+        "Content-Type": "application/json",
+        ...(options.headers || {}),
+      },
+      ...options,
+    });
+
+    let data = null;
+
+    try {
+      data = await response.json();
+    } catch {
+      data = null;
+    }
+
+    if (!response.ok) {
+      throw new Error(
+        data?.error || `Request failed with status ${response.status}`,
+      );
+    }
+
+    return data;
+  } catch (error) {
+    if (error instanceof TypeError) {
+      throw new Error(
+        "Unable to connect to the backend server. Make sure the backend is running on port 5000.",
+      );
+    }
+
+    throw error;
+  }
+};
+
+// =========================
+// Get Users
+// =========================
 
 export const getUsers = async () => {
-  const response = await fetch(`${API_URL}/users`);
-
-  if (!response.ok) {
-    throw new Error("Failed to fetch users");
-  }
-
-  return response.json();
+  return request(API_URL);
 };
 
-export const createUser = async (user) => {
-  const response = await fetch(`${API_URL}/users`, {
+// =========================
+// Create User
+// =========================
+
+export const createUser = async (userData) => {
+  return request(API_URL, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(user),
+    body: JSON.stringify(userData),
   });
-
-  if (!response.ok) {
-    throw new Error("Failed to create user");
-  }
-
-  return response.json();
 };
+
+// =========================
+// Update User
+// =========================
+
+export const updateUser = async (id, userData) => {
+  return request(`${API_URL}/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(userData),
+  });
+};
+
+// =========================
+// Delete User
+// =========================
 
 export const deleteUser = async (id) => {
-  const response = await fetch(`${API_URL}/users/${id}`, {
+  return request(`${API_URL}/${id}`, {
     method: "DELETE",
   });
-
-  if (!response.ok) {
-    throw new Error("Failed to delete user");
-  }
-
-  return response.json();
-};
-
-export const updateUser = async (id, user) => {
-  const response = await fetch(`${API_URL}/Users/${id}`, {
-    method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(user),
-  });
-
-  if (!response.ok) {
-    throw new Error("Faild to update user");
-  }
-
-  return response.json();
 };
