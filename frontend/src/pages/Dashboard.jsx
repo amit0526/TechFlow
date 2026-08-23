@@ -8,6 +8,16 @@ function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  // =========================
+  // Authentication Status
+  // =========================
+
+  const isAuthenticated = localStorage.getItem("techflowAuth") === "true";
+
+  // =========================
+  // Load Dashboard Data
+  // =========================
+
   useEffect(() => {
     const loadDashboard = async () => {
       try {
@@ -36,7 +46,10 @@ function Dashboard() {
 
   return (
     <div className="mx-auto w-full max-w-6xl">
-      {/* Header */}
+      {/* =========================
+          Header
+      ========================= */}
+
       <div className="mb-8">
         <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">
           Overview
@@ -51,7 +64,10 @@ function Dashboard() {
         </p>
       </div>
 
-      {/* Error */}
+      {/* =========================
+          Error
+      ========================= */}
+
       {error && (
         <div
           role="alert"
@@ -61,7 +77,10 @@ function Dashboard() {
         </div>
       )}
 
-      {/* Stats */}
+      {/* =========================
+          Stats
+      ========================= */}
+
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title="Total Users"
@@ -94,9 +113,15 @@ function Dashboard() {
         />
       </div>
 
-      {/* Main Grid */}
+      {/* =========================
+          Main Grid
+      ========================= */}
+
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* Recent Users */}
+        {/* =========================
+            Recent Users
+        ========================= */}
+
         <section className="rounded-xl border border-slate-800 bg-slate-900 lg:col-span-2">
           <div className="flex items-center justify-between border-b border-slate-800 p-5">
             <div>
@@ -175,7 +200,10 @@ function Dashboard() {
           )}
         </section>
 
-        {/* System Status */}
+        {/* =========================
+            System Status
+        ========================= */}
+
         <section className="rounded-xl border border-slate-800 bg-slate-900">
           <div className="border-b border-slate-800 p-5">
             <h2 className="font-semibold text-white">System Status</h2>
@@ -204,16 +232,21 @@ function Dashboard() {
               success={!error}
             />
 
+            {/* Authentication */}
+
             <StatusRow
               label="Authentication"
-              status="Not Configured"
-              success={false}
+              status={isAuthenticated ? "Operational" : "Not Configured"}
+              success={isAuthenticated}
             />
           </div>
         </section>
       </div>
 
-      {/* Quick Actions */}
+      {/* =========================
+          Quick Actions
+      ========================= */}
+
       <section className="mt-6 rounded-xl border border-slate-800 bg-slate-900 p-5">
         <div className="mb-5">
           <h2 className="font-semibold text-white">Quick Actions</h2>
