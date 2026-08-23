@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { getSettings, updateSettings } from "../services/settingsService";
 
 const DEFAULT_SETTINGS = {
   emailNotifications: true,
@@ -10,34 +11,41 @@ const DEFAULT_SETTINGS = {
 function Settings() {
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
   const [savedSettings, setSavedSettings] = useState(DEFAULT_SETTINGS);
+
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
 
   // =========================
-  // Load Settings
+  // Load Settings From Backend
   // =========================
 
   useEffect(() => {
-    try {
-      const storedSettings = localStorage.getItem("techflowSettings");
+    const loadSettings = async () => {
+      try {
+        setLoaded(false);
+        setError("");
 
-      if (storedSettings) {
-        const parsedSettings = JSON.parse(storedSettings);
+        const data = await getSettings();
 
-        const mergedSettings = {
+        const loadedSettings = {
           ...DEFAULT_SETTINGS,
-          ...parsedSettings,
+          ...data,
         };
 
-        setSettings(mergedSettings);
-        setSavedSettings(mergedSettings);
+        setSettings(loadedSettings);
+        setSavedSettings(loadedSettings);
+      } catch (error) {
+        console.error("Failed to load settings:", error);
+
+        setError(error.message || "Failed to load settings from the server.");
+      } finally {
+        setLoaded(true);
       }
-    } catch (error) {
-      console.error("Failed to load settings:", error);
-    } finally {
-      setLoaded(true);
-    }
+    };
+
+    loadSettings();
   }, []);
 
   // =========================
@@ -57,19 +65,30 @@ function Settings() {
     }));
 
     setMessage("");
+    setError("");
   };
 
   // =========================
   // Save Settings
   // =========================
 
-  const saveSettings = () => {
+  const saveSettings = async () => {
+    if (!hasChanges) return;
+
     try {
       setSaving(true);
+      setMessage("");
+      setError("");
 
-      localStorage.setItem("techflowSettings", JSON.stringify(settings));
+      const response = await updateSettings(settings);
 
-      setSavedSettings(settings);
+      const updatedSettings = {
+        ...DEFAULT_SETTINGS,
+        ...(response.settings || settings),
+      };
+
+      setSettings(updatedSettings);
+      setSavedSettings(updatedSettings);
 
       setMessage("Settings saved successfully.");
 
@@ -79,43 +98,65 @@ function Settings() {
     } catch (error) {
       console.error("Failed to save settings:", error);
 
-      setMessage("Failed to save settings.");
+      setError(error.message || "Failed to save settings.");
     } finally {
       setSaving(false);
     }
   };
 
   // =========================
-  // Reset Changes
+  // Reset Unsaved Changes
   // =========================
 
   const resetChanges = () => {
     setSettings(savedSettings);
     setMessage("");
+    setError("");
   };
 
   // =========================
   // Restore Defaults
   // =========================
 
-  const restoreDefaults = () => {
+  const restoreDefaults = async () => {
     const confirmed = window.confirm(
       "Restore all settings to their default values?",
     );
 
     if (!confirmed) return;
 
-    setSettings(DEFAULT_SETTINGS);
-    setSavedSettings(DEFAULT_SETTINGS);
-
-    localStorage.setItem("techflowSettings", JSON.stringify(DEFAULT_SETTINGS));
-
-    setMessage("Default settings restored.");
-
-    setTimeout(() => {
+    try {
+      setSaving(true);
       setMessage("");
-    }, 2500);
+      setError("");
+
+      const response = await updateSettings(DEFAULT_SETTINGS);
+
+      const restoredSettings = {
+        ...DEFAULT_SETTINGS,
+        ...(response.settings || {}),
+      };
+
+      setSettings(restoredSettings);
+      setSavedSettings(restoredSettings);
+
+      setMessage("Default settings restored.");
+
+      setTimeout(() => {
+        setMessage("");
+      }, 2500);
+    } catch (error) {
+      console.error("Failed to restore defaults:", error);
+
+      setError(error.message || "Failed to restore default settings.");
+    } finally {
+      setSaving(false);
+    }
   };
+
+  // =========================
+  // Loading
+  // =========================
 
   if (!loaded) {
     return (
@@ -149,6 +190,16 @@ function Settings() {
         </p>
       </div>
 
+      {/* =========================
+          Error
+      ========================= */}
+
+      {error && (
+        <div className="mb-6 rounded-xl border border-red-500/30 bg-red-500/10 p-4">
+          <p className="text-sm font-medium text-red-400">{error}</p>
+        </div>
+      )}
+
       <div className="space-y-6">
         {/* =========================
             Notifications
@@ -169,6 +220,7 @@ function Settings() {
               description="Receive important system notifications by email."
               enabled={settings.emailNotifications}
               onChange={() => updateSetting("emailNotifications")}
+              disabled={saving}
             />
 
             <SettingRow
@@ -176,6 +228,7 @@ function Settings() {
               description="Get notified when users are created or updated."
               enabled={settings.userNotifications}
               onChange={() => updateSetting("userNotifications")}
+              disabled={saving}
             />
           </div>
         </section>
@@ -200,6 +253,7 @@ function Settings() {
               enabled={settings.maintenanceMode}
               onChange={() => updateSetting("maintenanceMode")}
               warning
+              disabled={saving}
             />
 
             <SettingRow
@@ -207,12 +261,13 @@ function Settings() {
               description="Use a more compact layout for the dashboard."
               enabled={settings.compactMode}
               onChange={() => updateSetting("compactMode")}
+              disabled={saving}
             />
           </div>
         </section>
 
         {/* =========================
-            Database
+            Database & API
         ========================= */}
 
         <section className="rounded-xl border border-slate-800 bg-slate-900">
@@ -279,13 +334,7 @@ function Settings() {
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
               {message ? (
-                <p
-                  className={`text-sm font-medium ${
-                    message.includes("Failed")
-                      ? "text-red-400"
-                      : "text-emerald-400"
-                  }`}
-                >
+                <p className="text-sm font-medium text-emerald-400">
                   {message}
                 </p>
               ) : hasChanges ? (
@@ -323,7 +372,7 @@ function Settings() {
                 disabled={saving}
                 className="rounded-lg border border-amber-400/30 px-5 py-2.5 text-sm font-medium text-amber-400 transition hover:bg-amber-400/10 disabled:cursor-not-allowed disabled:opacity-40"
               >
-                Restore Defaults
+                {saving ? "Saving..." : "Restore Defaults"}
               </button>
 
               <button
@@ -352,6 +401,7 @@ function SettingRow({
   enabled,
   onChange,
   warning = false,
+  disabled = false,
 }) {
   return (
     <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
@@ -367,7 +417,8 @@ function SettingRow({
         aria-checked={enabled}
         aria-label={`${title} ${enabled ? "enabled" : "disabled"}`}
         onClick={onChange}
-        className={`relative h-7 w-12 shrink-0 rounded-full border transition focus:outline-none focus:ring-2 focus:ring-cyan-400/40 ${
+        disabled={disabled}
+        className={`relative h-7 w-12 shrink-0 rounded-full border transition focus:outline-none focus:ring-2 focus:ring-cyan-400/40 disabled:cursor-not-allowed disabled:opacity-50 ${
           enabled
             ? warning
               ? "border-amber-400 bg-amber-400"

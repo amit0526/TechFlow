@@ -11,30 +11,41 @@ import Profile from "./pages/Profile";
 import Login from "./pages/Login";
 import ChangePassword from "./pages/ChangePassword";
 
+import { getCurrentAdmin, getToken, logoutAdmin } from "./services/authService";
+
 function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  // =========================
+  // Authentication
+  // =========================
+
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    return localStorage.getItem("techflowAuth") === "true";
+    return Boolean(getToken());
   });
 
+  // =========================
+  // Login
+  // =========================
+
   const handleLogin = () => {
-    localStorage.setItem("techflowAuth", "true");
-    localStorage.setItem(
-      "techflowAdmin",
-      JSON.stringify({
-        name: "Amit Anand",
-        email: "admin@techflow.com",
-        role: "Administrator",
-      }),
-    );
+    const token = getToken();
+
+    if (!token) {
+      console.error("Login completed but JWT token is missing.");
+      setIsAuthenticated(false);
+      return;
+    }
 
     setIsAuthenticated(true);
   };
 
+  // =========================
+  // Logout
+  // =========================
+
   const handleLogout = () => {
-    localStorage.removeItem("techflowAuth");
-    localStorage.removeItem("techflowAdmin");
+    logoutAdmin();
 
     setIsAuthenticated(false);
     setSidebarOpen(false);
@@ -86,12 +97,15 @@ function App() {
 ========================= */
 
 function AdminPanel({ sidebarOpen, setSidebarOpen, onLogout }) {
+  const admin = getCurrentAdmin();
+
   return (
     <div className="min-h-screen bg-slate-950 text-white">
       <Navbar
         sidebarOpen={sidebarOpen}
         setSidebarOpen={setSidebarOpen}
         onLogout={onLogout}
+        admin={admin}
       />
 
       <div className="flex">
@@ -108,6 +122,12 @@ function AdminPanel({ sidebarOpen, setSidebarOpen, onLogout }) {
             <Route path="/profile" element={<Profile />} />
 
             <Route path="/change-password" element={<ChangePassword />} />
+
+            {/* =========================
+                404
+            ========================= */}
+
+            <Route path="*" element={<NotFound />} />
           </Routes>
         </main>
       </div>

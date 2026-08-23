@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { loginAdmin } from "../services/authService";
 
 function Login({ onLogin }) {
   const [email, setEmail] = useState("");
@@ -19,80 +20,18 @@ function Login({ onLogin }) {
       return;
     }
 
-    setLoading(true);
-
     try {
-      const response = await fetch("http://localhost:5000/api/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email: trimmedEmail,
-          password,
-        }),
-      });
+      setLoading(true);
 
-      const data = await response.json();
+      // Backend login + JWT save
+      await loginAdmin(trimmedEmail, password);
 
-      if (!response.ok) {
-        setError(data.error || data.message || "Invalid email or password.");
-        return;
-      }
-
-      if (!data.token) {
-        setError("Login succeeded but no authentication token was received.");
-        return;
-      }
-
-      // =========================
-      // Save JWT token
-      // =========================
-
-      localStorage.setItem("techflowToken", data.token);
-
-      // =========================
-      // Save Admin Information
-      // =========================
-
-      if (data.admin) {
-        const admin = {
-          name: data.admin.name || "Admin",
-          email: data.admin.email || trimmedEmail,
-          role: data.admin.role || "Administrator",
-        };
-
-        localStorage.setItem("techflowAdmin", JSON.stringify(admin));
-
-        localStorage.setItem(
-          "techflowProfile",
-          JSON.stringify({
-            name: admin.name,
-            email: admin.email,
-            role: admin.role,
-            phone: "",
-            bio: "TechFlow system administrator.",
-          }),
-        );
-      }
-
-      // =========================
-      // Authentication Flag
-      // =========================
-
-      localStorage.setItem("techflowAuth", "true");
-
-      // =========================
-      // Login Successful
-      // =========================
-
+      // Login successful
       onLogin?.();
     } catch (error) {
       console.error("Login failed:", error);
 
-      setError(
-        "Unable to connect to the server. Make sure the backend is running.",
-      );
+      setError(error.message || "Unable to login. Please try again.");
     } finally {
       setLoading(false);
     }

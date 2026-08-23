@@ -12,13 +12,15 @@ function Dashboard() {
   // Authentication Status
   // =========================
 
-  const isAuthenticated = localStorage.getItem("techflowAuth") === "true";
+  const isAuthenticated = Boolean(localStorage.getItem("techflow_token"));
 
   // =========================
   // Load Dashboard Data
   // =========================
 
   useEffect(() => {
+    let mounted = true;
+
     const loadDashboard = async () => {
       try {
         setLoading(true);
@@ -26,18 +28,28 @@ function Dashboard() {
 
         const data = await getUsers();
 
+        if (!mounted) return;
+
         setUsers(Array.isArray(data) ? data : []);
       } catch (error) {
         console.error("Dashboard error:", error);
 
+        if (!mounted) return;
+
         setError(error.message || "Failed to load dashboard data.");
         setUsers([]);
       } finally {
-        setLoading(false);
+        if (mounted) {
+          setLoading(false);
+        }
       }
     };
 
     loadDashboard();
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   const totalUsers = users.length;
@@ -231,8 +243,6 @@ function Dashboard() {
               status={error ? "Unavailable" : "Operational"}
               success={!error}
             />
-
-            {/* Authentication */}
 
             <StatusRow
               label="Authentication"

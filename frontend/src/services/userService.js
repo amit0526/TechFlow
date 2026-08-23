@@ -1,66 +1,49 @@
 const API_URL = "http://localhost:5000/api/users";
 
 // =========================
-// API Helper
+// API Request Helper
 // =========================
 
 const request = async (url, options = {}) => {
-  const token = localStorage.getItem("techflowToken");
+  const token = localStorage.getItem("techflow_token");
+
+  if (!token) {
+    throw new Error("Authentication token missing.");
+  }
+
+  const response = await fetch(url, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+      ...(options.headers || {}),
+    },
+  });
+
+  let data = null;
 
   try {
-    const response = await fetch(url, {
-      ...options,
-      headers: {
-        "Content-Type": "application/json",
-
-        ...(token
-          ? {
-              Authorization: `Bearer ${token}`,
-            }
-          : {}),
-
-        ...(options.headers || {}),
-      },
-    });
-
-    let data = null;
-
-    try {
-      data = await response.json();
-    } catch {
-      data = null;
-    }
-
-    if (response.status === 401) {
-      localStorage.removeItem("techflowToken");
-      localStorage.removeItem("techflowAuth");
-      localStorage.removeItem("techflowAdmin");
-
-      window.location.href = "/login";
-
-      throw new Error("Session expired. Please login again.");
-    }
-
-    if (!response.ok) {
-      throw new Error(
-        data?.error || `Request failed with status ${response.status}`,
-      );
-    }
-
-    return data;
-  } catch (error) {
-    if (error instanceof TypeError) {
-      throw new Error(
-        "Unable to connect to the backend server. Make sure the backend is running on port 5000.",
-      );
-    }
-
-    throw error;
+    data = await response.json();
+  } catch {
+    data = null;
   }
+
+  // Token invalid / expired
+  if (response.status === 401) {
+    throw new Error(data?.error || "Session expired. Please login again.");
+  }
+
+  if (!response.ok) {
+    throw new Error(
+      data?.error || `Request failed with status ${response.status}`,
+    );
+  }
+
+  return data;
 };
 
 // =========================
-// Get Users
+// Get All Users
 // =========================
 
 export const getUsers = async () => {
@@ -68,13 +51,21 @@ export const getUsers = async () => {
 };
 
 // =========================
+// Get Single User
+// =========================
+
+export const getUser = async (id) => {
+  return request(`${API_URL}/${id}`);
+};
+
+// =========================
 // Create User
 // =========================
 
-export const createUser = async (userData) => {
+export const createUser = async (user) => {
   return request(API_URL, {
     method: "POST",
-    body: JSON.stringify(userData),
+    body: JSON.stringify(user),
   });
 };
 
@@ -82,10 +73,10 @@ export const createUser = async (userData) => {
 // Update User
 // =========================
 
-export const updateUser = async (id, userData) => {
+export const updateUser = async (id, user) => {
   return request(`${API_URL}/${id}`, {
     method: "PATCH",
-    body: JSON.stringify(userData),
+    body: JSON.stringify(user),
   });
 };
 
