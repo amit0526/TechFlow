@@ -23,6 +23,7 @@ function Users() {
 
   const [editingUser, setEditingUser] = useState(null);
   const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState("all");
 
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -85,7 +86,6 @@ function Users() {
 
     if (!trimmedName || !trimmedEmail) {
       showToast("Name and email are required.", "error");
-
       return;
     }
 
@@ -142,24 +142,55 @@ function Users() {
   };
 
   // =========================
-  // Search
+  // Search + Filter
   // =========================
 
   const filteredUsers = useMemo(() => {
     const searchText = search.trim().toLowerCase();
 
-    if (!searchText) {
-      return users;
-    }
+    let result = users.filter((user) => {
+      if (!searchText) {
+        return true;
+      }
 
-    return users.filter((user) => {
       const userName = user.name?.toLowerCase() || "";
-
       const userEmail = user.email?.toLowerCase() || "";
 
       return userName.includes(searchText) || userEmail.includes(searchText);
     });
-  }, [users, search]);
+
+    switch (filter) {
+      case "name-asc":
+        result = [...result].sort((a, b) =>
+          (a.name || "").localeCompare(b.name || ""),
+        );
+        break;
+
+      case "name-desc":
+        result = [...result].sort((a, b) =>
+          (b.name || "").localeCompare(a.name || ""),
+        );
+        break;
+
+      case "email-asc":
+        result = [...result].sort((a, b) =>
+          (a.email || "").localeCompare(b.email || ""),
+        );
+        break;
+
+      case "email-desc":
+        result = [...result].sort((a, b) =>
+          (b.email || "").localeCompare(a.email || ""),
+        );
+        break;
+
+      case "all":
+      default:
+        break;
+    }
+
+    return result;
+  }, [users, search, filter]);
 
   // =========================
   // Pagination
@@ -190,7 +221,7 @@ function Users() {
   const showingTo = Math.min(startIndex + USERS_PER_PAGE, filteredUsers.length);
 
   // =========================
-  // Pagination
+  // Pagination Actions
   // =========================
 
   const goToPreviousPage = () => {
@@ -211,18 +242,16 @@ function Users() {
     });
   };
 
-  return (
-    <div className="w-full max-w-6xl mx-auto">
-      {/* =========================
-          Toast
-      ========================= */}
+  // =========================
+  // Render
+  // =========================
 
+  return (
+    <div className="mx-auto w-full max-w-6xl">
+      {/* Toast */}
       <Toast message={toast.message} type={toast.type} onClose={closeToast} />
 
-      {/* =========================
-          Header
-      ========================= */}
-
+      {/* Header */}
       <div className="mb-8">
         <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">
           Management
@@ -237,10 +266,7 @@ function Users() {
         </p>
       </div>
 
-      {/* =========================
-          Add User
-      ========================= */}
-
+      {/* Add User */}
       <UserForm
         name={name}
         email={email}
@@ -250,10 +276,7 @@ function Users() {
         loading={loading}
       />
 
-      {/* =========================
-          Edit User
-      ========================= */}
-
+      {/* Edit User */}
       {editingUser && (
         <EditForm
           user={editingUser}
@@ -269,10 +292,7 @@ function Users() {
         />
       )}
 
-      {/* =========================
-          Stats
-      ========================= */}
-
+      {/* Stats */}
       <div className="mb-6 rounded-xl border border-slate-800 bg-slate-900 p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -296,35 +316,58 @@ function Users() {
         </div>
       </div>
 
-      {/* =========================
-          Search
-      ========================= */}
+      {/* Search + Filter */}
+      <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-[1fr_220px]">
+        {/* Search */}
+        <div>
+          <label
+            htmlFor="user-search"
+            className="mb-2 block text-xs font-medium text-slate-400"
+          >
+            Search Users
+          </label>
 
-      <div className="mb-6">
-        <label
-          htmlFor="user-search"
-          className="mb-2 block text-xs font-medium text-slate-400"
-        >
-          Search Users
-        </label>
+          <input
+            id="user-search"
+            type="search"
+            placeholder="Search by name or email..."
+            value={search}
+            onChange={(event) => {
+              setSearch(event.target.value);
+              setCurrentPage(1);
+            }}
+            className="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-400"
+          />
+        </div>
 
-        <input
-          id="user-search"
-          type="search"
-          placeholder="Search by name or email..."
-          value={search}
-          onChange={(event) => {
-            setSearch(event.target.value);
-            setCurrentPage(1);
-          }}
-          className="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-400"
-        />
+        {/* Filter */}
+        <div>
+          <label
+            htmlFor="user-filter"
+            className="mb-2 block text-xs font-medium text-slate-400"
+          >
+            Filter
+          </label>
+
+          <select
+            id="user-filter"
+            value={filter}
+            onChange={(event) => {
+              setFilter(event.target.value);
+              setCurrentPage(1);
+            }}
+            className="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-400"
+          >
+            <option value="all">All Users</option>
+            <option value="name-asc">Name A → Z</option>
+            <option value="name-desc">Name Z → A</option>
+            <option value="email-asc">Email A → Z</option>
+            <option value="email-desc">Email Z → A</option>
+          </select>
+        </div>
       </div>
 
-      {/* =========================
-          User List
-      ========================= */}
-
+      {/* User List */}
       {loading ? (
         <div className="rounded-xl border border-slate-800 bg-slate-900 p-10 text-center">
           <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-2 border-slate-700 border-t-cyan-400" />
@@ -353,10 +396,7 @@ function Users() {
             editUser={editUser}
           />
 
-          {/* =========================
-              Pagination
-          ========================= */}
-
+          {/* Pagination */}
           {totalPages > 1 && (
             <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <button
