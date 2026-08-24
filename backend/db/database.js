@@ -55,6 +55,37 @@ const initializeDatabase = async () => {
       );
     `);
 
+    // =========================
+    // Admin Settings Table
+    // =========================
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS admin_settings (
+        id INTEGER PRIMARY KEY,
+        email_notifications BOOLEAN NOT NULL DEFAULT TRUE,
+        user_notifications BOOLEAN NOT NULL DEFAULT TRUE,
+        maintenance_mode BOOLEAN NOT NULL DEFAULT FALSE,
+        compact_mode BOOLEAN NOT NULL DEFAULT FALSE,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // =========================
+    // Default Settings
+    // =========================
+
+    await pool.query(`
+      INSERT INTO admin_settings (
+        id,
+        email_notifications,
+        user_notifications,
+        maintenance_mode,
+        compact_mode
+      )
+      VALUES (1, TRUE, TRUE, FALSE, FALSE)
+      ON CONFLICT (id) DO NOTHING;
+    `);
+
     console.log("Database tables initialized.");
   } catch (error) {
     console.error("Database initialization error:", error);
