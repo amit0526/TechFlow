@@ -8,28 +8,40 @@ function EditForm({
   onSuccess,
   onError,
 }) {
-  const [name, setName] = useState(user?.name || "");
-  const [email, setEmail] = useState(user?.email || "");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Reset form when selected user changes
+  // =========================
+  // Load Selected User
+  // =========================
+
   useEffect(() => {
     setName(user?.name || "");
     setEmail(user?.email || "");
   }, [user]);
 
+  // =========================
+  // Update User
+  // =========================
+
   const handleUpdate = async (event) => {
     event.preventDefault();
 
     const trimmedName = name.trim();
-    const trimmedEmail = email.trim();
+    const trimmedEmail = email.trim().toLowerCase();
 
     if (!trimmedName || !trimmedEmail) {
-      onError?.("Name and email are required.");
+      onError?.(new Error("Name and email are required."));
       return;
     }
 
-    if (loading || !user?.id) {
+    if (!user?.id) {
+      onError?.(new Error("Invalid user selected."));
+      return;
+    }
+
+    if (loading) {
       return;
     }
 
@@ -41,19 +53,27 @@ function EditForm({
         email: trimmedEmail,
       });
 
+      // Refresh users after successful update
       await fetchUsers();
 
+      // Close edit form
       setEditingUser(null);
 
       onSuccess?.();
     } catch (error) {
       console.error("Update user error:", error);
 
-      onError?.();
+      onError?.(
+        error instanceof Error ? error : new Error("Failed to update user."),
+      );
     } finally {
       setLoading(false);
     }
   };
+
+  // =========================
+  // Close
+  // =========================
 
   const handleClose = () => {
     if (loading) return;
@@ -61,12 +81,17 @@ function EditForm({
     setEditingUser(null);
   };
 
+  if (!user) {
+    return null;
+  }
+
   return (
     <form
       onSubmit={handleUpdate}
       className="mb-6 rounded-xl border border-cyan-500/30 bg-slate-900 p-5 shadow-lg"
     >
       {/* Header */}
+
       <div className="mb-5 flex items-center justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">
@@ -92,8 +117,10 @@ function EditForm({
       </div>
 
       {/* Fields */}
+
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {/* Name */}
+
         <div>
           <label
             htmlFor="edit-user-name"
@@ -110,11 +137,13 @@ function EditForm({
             disabled={loading}
             placeholder="Enter user name"
             autoComplete="name"
+            required
             className="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-400 disabled:cursor-not-allowed disabled:opacity-50"
           />
         </div>
 
         {/* Email */}
+
         <div>
           <label
             htmlFor="edit-user-email"
@@ -131,12 +160,14 @@ function EditForm({
             disabled={loading}
             placeholder="Enter email address"
             autoComplete="email"
+            required
             className="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-400 disabled:cursor-not-allowed disabled:opacity-50"
           />
         </div>
       </div>
 
       {/* Actions */}
+
       <div className="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
         <button
           type="button"

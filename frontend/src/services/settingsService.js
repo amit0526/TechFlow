@@ -1,21 +1,46 @@
 const API_URL = "http://localhost:5000/api/settings";
 
+const TOKEN_KEY = "techflow_token";
+
 // =========================
-// API Helper
+// Clear Authentication
 // =========================
 
-const request = async (url, options = {}) => {
-  const token = localStorage.getItem("techflow_token");
+function clearAuthentication() {
+  localStorage.removeItem("techflow_token");
+  localStorage.removeItem("techflow_admin");
+  localStorage.removeItem("techflow_auth");
+
+  // Old keys cleanup
+  localStorage.removeItem("techflowToken");
+  localStorage.removeItem("techflowAdmin");
+  localStorage.removeItem("techflowAuth");
+}
+
+// =========================
+// API Request Helper
+// =========================
+
+async function request(url, options = {}) {
+  const token = localStorage.getItem(TOKEN_KEY);
 
   if (!token) {
-    throw new Error("Authentication token missing.");
+    throw new Error("Authentication token missing. Please login again.");
   }
 
   const response = await fetch(url, {
     ...options,
     headers: {
-      "Content-Type": "application/json",
+      Accept: "application/json",
+
+      ...(options.body
+        ? {
+            "Content-Type": "application/json",
+          }
+        : {}),
+
       Authorization: `Bearer ${token}`,
+
       ...(options.headers || {}),
     },
   });
@@ -28,30 +53,81 @@ const request = async (url, options = {}) => {
     data = null;
   }
 
+  // =========================
+  // Authentication Error
+  // =========================
+
+  if (response.status === 401 || response.status === 403) {
+    clearAuthentication();
+
+    const error = new Error("Session expired. Please login again.");
+
+    error.code = "AUTH_EXPIRED";
+    error.status = response.status;
+
+    throw error;
+  }
+
+  // =========================
+  // API Error
+  // =========================
+
   if (!response.ok) {
-    throw new Error(
-      data?.error || `Request failed with status ${response.status}`,
+    const error = new Error(
+      data?.error ||
+        data?.message ||
+        `Request failed with status ${response.status}`,
     );
+
+    error.status = response.status;
+
+    throw error;
   }
 
   return data;
-};
+}
 
 // =========================
 // Get Settings
 // =========================
 
-export const getSettings = async () => {
+export async function getSettings() {
   return request(API_URL);
-};
+}
 
 // =========================
 // Update Settings
 // =========================
 
-export const updateSettings = async (settings) => {
+export async function updateSettings(settings) {
+  if (!settings || typeof settings !== "object") {
+    throw new Error("Settings data is required.");
+  }
+
+  const {
+    emailNotifications,
+    userNotifications,
+    maintenanceMode,
+    compactMode,
+  } = settings;
+
+  // Validate before API request
+  if (
+    typeof emailNotifications !== "boolean" ||
+    typeof userNotifications !== "boolean" ||
+    typeof maintenanceMode !== "boolean" ||
+    typeof compactMode !== "boolean"
+  ) {
+    throw new Error("All settings must be boolean values.");
+  }
+
   return request(API_URL, {
     method: "PATCH",
-    body: JSON.stringify(settings),
+    body: JSON.stringify({
+      emailNotifications,
+      userNotifications,
+      maintenanceMode,
+      compactMode,
+    }),
   });
-};
+}

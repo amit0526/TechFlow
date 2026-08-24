@@ -1,38 +1,18 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
+
+import { getCurrentAdmin } from "../services/authService";
+
+const DEFAULT_ADMIN = {
+  name: "Admin",
+  email: "admin@techflow.com",
+  role: "Administrator",
+};
 
 function Navbar({ sidebarOpen, setSidebarOpen, onLogout }) {
   const [profileOpen, setProfileOpen] = useState(false);
 
-  const [admin, setAdmin] = useState({
-    name: "Admin",
-    email: "admin@techflow.com",
-    role: "Administrator",
-  });
-
-  // =========================
-  // Load Admin Profile
-  // =========================
-
-  useEffect(() => {
-    try {
-      const savedProfile = localStorage.getItem("techflowProfile");
-
-      if (!savedProfile) {
-        return;
-      }
-
-      const profile = JSON.parse(savedProfile);
-
-      setAdmin({
-        name: profile.name || "Admin",
-        email: profile.email || "admin@techflow.com",
-        role: profile.role || "Administrator",
-      });
-    } catch (error) {
-      console.error("Failed to load admin profile:", error);
-    }
-  }, []);
+  const admin = getCurrentAdmin() || DEFAULT_ADMIN;
 
   // =========================
   // Initials
@@ -49,13 +29,19 @@ function Navbar({ sidebarOpen, setSidebarOpen, onLogout }) {
       .toUpperCase() || "A";
 
   // =========================
+  // Close Menu
+  // =========================
+
+  const closeMenu = () => {
+    setProfileOpen(false);
+  };
+
+  // =========================
   // Logout
   // =========================
 
   const handleLogout = () => {
     setProfileOpen(false);
-
-    // Let App.jsx handle authentication state
     onLogout?.();
   };
 
@@ -85,7 +71,10 @@ function Navbar({ sidebarOpen, setSidebarOpen, onLogout }) {
 
           <Link
             to="/"
-            onClick={() => setProfileOpen(false)}
+            onClick={() => {
+              closeMenu();
+              setSidebarOpen(false);
+            }}
             className="flex items-center gap-2"
           >
             <div
@@ -123,9 +112,7 @@ function Navbar({ sidebarOpen, setSidebarOpen, onLogout }) {
             <span className="text-xs text-slate-400">System Online</span>
           </div>
 
-          {/* =========================
-              Profile Button
-          ========================= */}
+          {/* Profile Button */}
 
           <button
             type="button"
@@ -134,21 +121,15 @@ function Navbar({ sidebarOpen, setSidebarOpen, onLogout }) {
             aria-expanded={profileOpen}
             className="flex items-center gap-2 rounded-lg px-2 py-1.5 transition hover:bg-slate-800"
           >
-            {/* Avatar */}
-
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-cyan-400 text-xs font-bold text-slate-950">
               {initials}
             </div>
-
-            {/* Name */}
 
             <div className="hidden text-left sm:block">
               <p className="text-xs font-medium text-white">{admin.name}</p>
 
               <p className="text-[10px] text-slate-500">{admin.role}</p>
             </div>
-
-            {/* Arrow */}
 
             <span
               className={`hidden text-xs text-slate-500 transition sm:block ${
@@ -171,7 +152,7 @@ function Navbar({ sidebarOpen, setSidebarOpen, onLogout }) {
               <button
                 type="button"
                 aria-label="Close profile menu"
-                onClick={() => setProfileOpen(false)}
+                onClick={closeMenu}
                 className="fixed inset-0 z-40 cursor-default"
               />
 
@@ -201,41 +182,31 @@ function Navbar({ sidebarOpen, setSidebarOpen, onLogout }) {
                 {/* Menu */}
 
                 <div className="p-2">
-                  {/* Profile */}
-
                   <Link
                     to="/profile"
-                    onClick={() => setProfileOpen(false)}
+                    onClick={closeMenu}
                     className="block rounded-lg px-3 py-2.5 text-sm text-slate-300 transition hover:bg-slate-800 hover:text-white"
                   >
                     👤 Profile
                   </Link>
 
-                  {/* Settings */}
-
                   <Link
                     to="/settings"
-                    onClick={() => setProfileOpen(false)}
+                    onClick={closeMenu}
                     className="block rounded-lg px-3 py-2.5 text-sm text-slate-300 transition hover:bg-slate-800 hover:text-white"
                   >
                     ⚙ Settings
                   </Link>
 
-                  {/* Change Password */}
-
                   <Link
                     to="/change-password"
-                    onClick={() => setProfileOpen(false)}
+                    onClick={closeMenu}
                     className="block rounded-lg px-3 py-2.5 text-sm text-slate-300 transition hover:bg-slate-800 hover:text-white"
                   >
                     🔐 Change Password
                   </Link>
 
-                  {/* Divider */}
-
                   <div className="my-2 border-t border-slate-800" />
-
-                  {/* Logout */}
 
                   <button
                     type="button"

@@ -4,9 +4,13 @@ const express = require("express");
 const cors = require("cors");
 
 const pool = require("./db/database");
+
 const authRoutes = require("./routes/authRoutes");
 const settingsRoutes = require("./routes/settingsRoutes");
+
 const authMiddleware = require("./middleware/authMiddleware");
+
+const { sendUserNotificationEmail } = require("./services/emailService");
 
 const app = express();
 
@@ -33,13 +37,60 @@ app.use("/api/auth", authRoutes);
 // =========================
 // Settings Routes
 // =========================
-// GET   /api/settings
-// PATCH /api/settings
 
 app.use("/api/settings", settingsRoutes);
 
 // =========================
+// Helper
+// Check Email Notifications
+// =========================
+
+async function isEmailNotificationEnabled() {
+  try {
+    const result = await pool.query(`
+      SELECT email_notifications
+      FROM admin_settings
+      WHERE id = 1
+    `);
+
+    return result.rows[0]?.email_notifications ?? false;
+  } catch (error) {
+    console.error("Failed to check email notification setting:", error);
+
+    // Safe default:
+    // If settings cannot be read, do not send email.
+    return false;
+  }
+}
+
+// =========================
+// Send User Email Safely
+// =========================
+
+async function notifyUserAction(action, user) {
+  try {
+    const enabled = await isEmailNotificationEnabled();
+
+    if (!enabled) {
+      console.log(`Email notification skipped: ${action}`);
+
+      return;
+    }
+
+    sendUserNotificationEmail({
+      action,
+      user,
+    }).catch((error) => {
+      console.error(`Email notification failed for ${action}:`, error);
+    });
+  } catch (error) {
+    console.error(`User notification error (${action}):`, error);
+  }
+}
+
+// =========================
 // Health Check
+// GET /
 // =========================
 
 app.get("/", (req, res) => {
@@ -141,13 +192,20 @@ app.post("/api/users", authMiddleware, async (req, res) => {
     const cleanEmail = email.trim().toLowerCase();
 
     const result = await pool.query(
-      `INSERT INTO users (name, email)
-       VALUES ($1, $2)
-       RETURNING *`,
+      `
+        INSERT INTO users (name, email)
+        VALUES ($1, $2)
+        RETURNING *
+        `,
       [cleanName, cleanEmail],
     );
 
-    res.status(201).json(result.rows[0]);
+    const user = result.rows[0];
+
+    // Email notification
+    await notifyUserAction("created", user);
+
+    res.status(201).json(user);
   } catch (error) {
     console.error("POST /api/users:", error);
 
@@ -184,11 +242,14 @@ app.patch("/api/users/:id", authMiddleware, async (req, res) => {
     const cleanEmail = email.trim().toLowerCase();
 
     const result = await pool.query(
-      `UPDATE users
-       SET name = $1,
-           email = $2
-       WHERE id = $3
-       RETURNING *`,
+      `
+        UPDATE users
+        SET
+          name = $1,
+          email = $2
+        WHERE id = $3
+        RETURNING *
+        `,
       [cleanName, cleanEmail, id],
     );
 
@@ -198,7 +259,12 @@ app.patch("/api/users/:id", authMiddleware, async (req, res) => {
       });
     }
 
-    res.json(result.rows[0]);
+    const user = result.rows[0];
+
+    // Email notification
+    await notifyUserAction("updated", user);
+
+    res.json(user);
   } catch (error) {
     console.error("PATCH /api/users/:id:", error);
 
@@ -225,7 +291,11 @@ app.delete("/api/users/:id", authMiddleware, async (req, res) => {
     const { id } = req.params;
 
     const result = await pool.query(
-      "DELETE FROM users WHERE id = $1 RETURNING *",
+      `
+        DELETE FROM users
+        WHERE id = $1
+        RETURNING *
+        `,
       [id],
     );
 
@@ -235,9 +305,14 @@ app.delete("/api/users/:id", authMiddleware, async (req, res) => {
       });
     }
 
+    const user = result.rows[0];
+
+    // Email notification
+    await notifyUserAction("deleted", user);
+
     res.json({
       message: "User deleted successfully",
-      user: result.rows[0],
+      user,
     });
   } catch (error) {
     console.error("DELETE /api/users/:id:", error);
@@ -272,7 +347,7 @@ app.use((error, req, res, next) => {
 });
 
 // =========================
-// Server
+// Start Server
 // =========================
 
 app.listen(PORT, () => {

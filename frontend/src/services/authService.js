@@ -1,20 +1,56 @@
 const API_URL = "http://localhost:5000/api/auth";
 
+const TOKEN_KEY = "techflow_token";
+const ADMIN_KEY = "techflow_admin";
+const AUTH_KEY = "techflow_auth";
+
+// =========================
+// Clear Authentication
+// =========================
+
+export function clearAuthentication() {
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(ADMIN_KEY);
+  localStorage.removeItem(AUTH_KEY);
+
+  // Remove old keys from previous versions
+  localStorage.removeItem("techflowToken");
+  localStorage.removeItem("techflowAdmin");
+  localStorage.removeItem("techflowAuth");
+}
+
 // =========================
 // Login
 // =========================
 
 export async function loginAdmin(email, password) {
-  const response = await fetch(`${API_URL}/login`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      email,
-      password,
-    }),
-  });
+  const cleanEmail = email?.trim().toLowerCase();
+
+  if (!cleanEmail || !password) {
+    throw new Error("Email and password are required.");
+  }
+
+  let response;
+
+  try {
+    response = await fetch(`${API_URL}/login`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({
+        email: cleanEmail,
+        password,
+      }),
+    });
+  } catch (error) {
+    console.error("Login request failed:", error);
+
+    throw new Error(
+      "Unable to connect to the server. Make sure the backend is running.",
+    );
+  }
 
   let data = null;
 
@@ -24,11 +60,21 @@ export async function loginAdmin(email, password) {
     data = null;
   }
 
+  // =========================
+  // Login Error
+  // =========================
+
   if (!response.ok) {
     throw new Error(
-      data?.error || data?.message || "Invalid email or password.",
+      data?.error ||
+        data?.message ||
+        `Login failed with status ${response.status}`,
     );
   }
+
+  // =========================
+  // Validate JWT
+  // =========================
 
   if (!data?.token) {
     throw new Error(
@@ -37,28 +83,27 @@ export async function loginAdmin(email, password) {
   }
 
   // =========================
-  // Save JWT
-  // =========================
-
-  localStorage.setItem("techflow_token", data.token);
-
-  // =========================
-  // Save Admin
+  // Admin Data
   // =========================
 
   const admin = {
     name: data.admin?.name || "Admin",
-    email: data.admin?.email || email,
+    email: data.admin?.email || cleanEmail,
     role: data.admin?.role || "Administrator",
   };
 
-  localStorage.setItem("techflow_admin", JSON.stringify(admin));
-
   // =========================
-  // Authentication Flag
+  // Save Authentication
   // =========================
 
-  localStorage.setItem("techflow_auth", "true");
+  localStorage.setItem(TOKEN_KEY, data.token);
+  localStorage.setItem(ADMIN_KEY, JSON.stringify(admin));
+  localStorage.setItem(AUTH_KEY, "true");
+
+  // Clean old authentication keys
+  localStorage.removeItem("techflowToken");
+  localStorage.removeItem("techflowAdmin");
+  localStorage.removeItem("techflowAuth");
 
   return {
     ...data,
@@ -71,9 +116,7 @@ export async function loginAdmin(email, password) {
 // =========================
 
 export function logoutAdmin() {
-  localStorage.removeItem("techflow_token");
-  localStorage.removeItem("techflow_admin");
-  localStorage.removeItem("techflow_auth");
+  clearAuthentication();
 }
 
 // =========================
@@ -81,7 +124,7 @@ export function logoutAdmin() {
 // =========================
 
 export function getToken() {
-  return localStorage.getItem("techflow_token");
+  return localStorage.getItem(TOKEN_KEY);
 }
 
 // =========================
@@ -89,7 +132,7 @@ export function getToken() {
 // =========================
 
 export function getCurrentAdmin() {
-  const admin = localStorage.getItem("techflow_admin");
+  const admin = localStorage.getItem(ADMIN_KEY);
 
   if (!admin) {
     return null;
@@ -97,7 +140,11 @@ export function getCurrentAdmin() {
 
   try {
     return JSON.parse(admin);
-  } catch {
+  } catch (error) {
+    console.error("Failed to parse admin information:", error);
+
+    localStorage.removeItem(ADMIN_KEY);
+
     return null;
   }
 }
@@ -107,8 +154,8 @@ export function getCurrentAdmin() {
 // =========================
 
 export function isAuthenticated() {
-  const token = localStorage.getItem("techflow_token");
-  const auth = localStorage.getItem("techflow_auth");
+  const token = getToken();
+  const auth = localStorage.getItem(AUTH_KEY);
 
   return Boolean(token && auth === "true");
 }

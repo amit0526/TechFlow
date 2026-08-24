@@ -1,20 +1,37 @@
 const API_URL = "http://localhost:5000/api/users";
 
+const TOKEN_KEY = "techflow_token";
+
+// =========================
+// Clear Authentication
+// =========================
+
+function clearAuthentication() {
+  localStorage.removeItem("techflow_token");
+  localStorage.removeItem("techflow_admin");
+  localStorage.removeItem("techflow_auth");
+}
+
 // =========================
 // API Request Helper
 // =========================
 
-const request = async (url, options = {}) => {
-  const token = localStorage.getItem("techflow_token");
+async function request(url, options = {}) {
+  const token = localStorage.getItem(TOKEN_KEY);
 
   if (!token) {
-    throw new Error("Authentication token missing.");
+    throw new Error("Authentication token missing. Please login again.");
   }
 
   const response = await fetch(url, {
     ...options,
     headers: {
-      "Content-Type": "application/json",
+      Accept: "application/json",
+      ...(options.body
+        ? {
+            "Content-Type": "application/json",
+          }
+        : {}),
       Authorization: `Bearer ${token}`,
       ...(options.headers || {}),
     },
@@ -28,64 +45,116 @@ const request = async (url, options = {}) => {
     data = null;
   }
 
-  // Token invalid / expired
-  if (response.status === 401) {
-    throw new Error(data?.error || "Session expired. Please login again.");
+  // =========================
+  // Authentication Error
+  // =========================
+
+  if (response.status === 401 || response.status === 403) {
+    clearAuthentication();
+
+    const authError = new Error("Session expired. Please login again.");
+
+    authError.code = "AUTH_EXPIRED";
+    authError.status = response.status;
+
+    throw authError;
   }
 
+  // =========================
+  // API Error
+  // =========================
+
   if (!response.ok) {
-    throw new Error(
-      data?.error || `Request failed with status ${response.status}`,
+    const apiError = new Error(
+      data?.error ||
+        data?.message ||
+        `Request failed with status ${response.status}`,
     );
+
+    apiError.status = response.status;
+
+    throw apiError;
   }
 
   return data;
-};
+}
 
 // =========================
 // Get All Users
 // =========================
 
-export const getUsers = async () => {
+export async function getUsers() {
   return request(API_URL);
-};
+}
 
 // =========================
 // Get Single User
 // =========================
 
-export const getUser = async (id) => {
+export async function getUser(id) {
+  if (!id) {
+    throw new Error("User ID is required.");
+  }
+
   return request(`${API_URL}/${id}`);
-};
+}
 
 // =========================
 // Create User
 // =========================
 
-export const createUser = async (user) => {
+export async function createUser(userData) {
+  const name = userData?.name?.trim();
+  const email = userData?.email?.trim().toLowerCase();
+
+  if (!name || !email) {
+    throw new Error("Name and email are required.");
+  }
+
   return request(API_URL, {
     method: "POST",
-    body: JSON.stringify(user),
+    body: JSON.stringify({
+      name,
+      email,
+    }),
   });
-};
+}
 
 // =========================
 // Update User
 // =========================
 
-export const updateUser = async (id, user) => {
+export async function updateUser(id, userData) {
+  if (!id) {
+    throw new Error("User ID is required.");
+  }
+
+  const name = userData?.name?.trim();
+  const email = userData?.email?.trim().toLowerCase();
+
+  if (!name || !email) {
+    throw new Error("Name and email are required.");
+  }
+
   return request(`${API_URL}/${id}`, {
     method: "PATCH",
-    body: JSON.stringify(user),
+    body: JSON.stringify({
+      name,
+      email,
+    }),
   });
-};
+}
 
 // =========================
 // Delete User
 // =========================
 
-export const deleteUser = async (id) => {
+export async function deleteUser(id) {
+  if (!id) {
+    throw new Error("User ID is required.");
+  }
+
   return request(`${API_URL}/${id}`, {
     method: "DELETE",
   });
-};
+}

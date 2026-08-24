@@ -14,17 +14,18 @@ import Toast from "../components/Toast";
 
 const USERS_PER_PAGE = 5;
 
-function Users() {
+function Users({ userNotifications = true }) {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
 
   const [editingUser, setEditingUser] = useState(null);
+
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
-
   const [currentPage, setCurrentPage] = useState(1);
 
   const [toast, setToast] = useState({
@@ -64,7 +65,11 @@ function Users() {
     } catch (error) {
       console.error("Fetch users error:", error);
 
-      showToast("Failed to load users. Please try again.", "error");
+      // Errors should always be visible.
+      showToast(
+        error.message || "Failed to load users. Please try again.",
+        "error",
+      );
     } finally {
       setLoading(false);
     }
@@ -82,7 +87,7 @@ function Users() {
     event.preventDefault();
 
     const trimmedName = name.trim();
-    const trimmedEmail = email.trim();
+    const trimmedEmail = email.trim().toLowerCase();
 
     if (!trimmedName || !trimmedEmail) {
       showToast("Name and email are required.", "error");
@@ -90,6 +95,8 @@ function Users() {
     }
 
     try {
+      setSaving(true);
+
       await createUser({
         name: trimmedName,
         email: trimmedEmail,
@@ -101,11 +108,19 @@ function Users() {
 
       await fetchUsers();
 
-      showToast("User added successfully.");
+      // User Notifications ON → show success notification
+      if (userNotifications) {
+        showToast("User added successfully.");
+      }
     } catch (error) {
       console.error("Add user error:", error);
 
-      showToast("Failed to add user. Please try again.", "error");
+      showToast(
+        error.message || "Failed to add user. Please try again.",
+        "error",
+      );
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -114,6 +129,11 @@ function Users() {
   // =========================
 
   const deleteUser = async (id) => {
+    if (!id) {
+      showToast("Invalid user ID.", "error");
+      return;
+    }
+
     const confirmed = window.confirm(
       "Are you sure you want to delete this user?",
     );
@@ -121,15 +141,25 @@ function Users() {
     if (!confirmed) return;
 
     try {
+      setSaving(true);
+
       await deleteUserApi(id);
 
       await fetchUsers();
 
-      showToast("User deleted successfully.");
+      // User Notifications ON → show success notification
+      if (userNotifications) {
+        showToast("User deleted successfully.");
+      }
     } catch (error) {
       console.error("Delete user error:", error);
 
-      showToast("Failed to delete user. Please try again.", "error");
+      showToast(
+        error.message || "Failed to delete user. Please try again.",
+        "error",
+      );
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -138,6 +168,8 @@ function Users() {
   // =========================
 
   const editUser = (user) => {
+    if (!user) return;
+
     setEditingUser(user);
   };
 
@@ -184,7 +216,6 @@ function Users() {
         );
         break;
 
-      case "all":
       default:
         break;
     }
@@ -221,7 +252,7 @@ function Users() {
   const showingTo = Math.min(startIndex + USERS_PER_PAGE, filteredUsers.length);
 
   // =========================
-  // Pagination Actions
+  // Pagination
   // =========================
 
   const goToPreviousPage = () => {
@@ -248,10 +279,10 @@ function Users() {
 
   return (
     <div className="mx-auto w-full max-w-6xl">
-      {/* Toast */}
       <Toast message={toast.message} type={toast.type} onClose={closeToast} />
 
       {/* Header */}
+
       <div className="mb-8">
         <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">
           Management
@@ -267,16 +298,18 @@ function Users() {
       </div>
 
       {/* Add User */}
+
       <UserForm
         name={name}
         email={email}
         setName={setName}
         setEmail={setEmail}
         addUser={addUser}
-        loading={loading}
+        loading={saving}
       />
 
       {/* Edit User */}
+
       {editingUser && (
         <EditForm
           user={editingUser}
@@ -284,15 +317,21 @@ function Users() {
           updateUser={updateUser}
           fetchUsers={fetchUsers}
           onSuccess={() => {
-            showToast("User updated successfully.");
+            if (userNotifications) {
+              showToast("User updated successfully.");
+            }
           }}
-          onError={() => {
-            showToast("Failed to update user. Please try again.", "error");
+          onError={(error) => {
+            showToast(
+              error?.message || "Failed to update user. Please try again.",
+              "error",
+            );
           }}
         />
       )}
 
       {/* Stats */}
+
       <div className="mb-6 rounded-xl border border-slate-800 bg-slate-900 p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -317,8 +356,8 @@ function Users() {
       </div>
 
       {/* Search + Filter */}
+
       <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-[1fr_220px]">
-        {/* Search */}
         <div>
           <label
             htmlFor="user-search"
@@ -340,7 +379,6 @@ function Users() {
           />
         </div>
 
-        {/* Filter */}
         <div>
           <label
             htmlFor="user-filter"
@@ -368,6 +406,7 @@ function Users() {
       </div>
 
       {/* User List */}
+
       {loading ? (
         <div className="rounded-xl border border-slate-800 bg-slate-900 p-10 text-center">
           <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-2 border-slate-700 border-t-cyan-400" />
@@ -397,12 +436,13 @@ function Users() {
           />
 
           {/* Pagination */}
+
           {totalPages > 1 && (
             <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <button
                 type="button"
                 onClick={goToPreviousPage}
-                disabled={currentPage === 1}
+                disabled={currentPage === 1 || saving}
                 className="w-full rounded-lg border border-slate-700 bg-slate-800 px-5 py-2.5 text-sm font-medium text-slate-300 transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
               >
                 ← Previous
@@ -417,7 +457,7 @@ function Users() {
               <button
                 type="button"
                 onClick={goToNextPage}
-                disabled={currentPage === totalPages}
+                disabled={currentPage === totalPages || saving}
                 className="w-full rounded-lg border border-slate-700 bg-slate-800 px-5 py-2.5 text-sm font-medium text-slate-300 transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
               >
                 Next →

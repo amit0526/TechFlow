@@ -8,7 +8,7 @@ const DEFAULT_SETTINGS = {
   compactMode: false,
 };
 
-function Settings() {
+function Settings({ onSettingsChange }) {
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
   const [savedSettings, setSavedSettings] = useState(DEFAULT_SETTINGS);
 
@@ -22,12 +22,17 @@ function Settings() {
   // =========================
 
   useEffect(() => {
+    let mounted = true;
+
     const loadSettings = async () => {
       try {
         setLoaded(false);
         setError("");
+        setMessage("");
 
         const data = await getSettings();
+
+        if (!mounted) return;
 
         const loadedSettings = {
           ...DEFAULT_SETTINGS,
@@ -36,17 +41,28 @@ function Settings() {
 
         setSettings(loadedSettings);
         setSavedSettings(loadedSettings);
+
+        // Sync with App.jsx
+        onSettingsChange?.(loadedSettings);
       } catch (error) {
+        if (!mounted) return;
+
         console.error("Failed to load settings:", error);
 
         setError(error.message || "Failed to load settings from the server.");
       } finally {
-        setLoaded(true);
+        if (mounted) {
+          setLoaded(true);
+        }
       }
     };
 
     loadSettings();
-  }, []);
+
+    return () => {
+      mounted = false;
+    };
+  }, [onSettingsChange]);
 
   // =========================
   // Check Unsaved Changes
@@ -73,7 +89,7 @@ function Settings() {
   // =========================
 
   const saveSettings = async () => {
-    if (!hasChanges) return;
+    if (!hasChanges || saving) return;
 
     try {
       setSaving(true);
@@ -84,11 +100,15 @@ function Settings() {
 
       const updatedSettings = {
         ...DEFAULT_SETTINGS,
-        ...(response.settings || settings),
+        ...(response?.settings || settings),
       };
 
       setSettings(updatedSettings);
       setSavedSettings(updatedSettings);
+
+      // IMPORTANT:
+      // Update App.jsx immediately
+      onSettingsChange?.(updatedSettings);
 
       setMessage("Settings saved successfully.");
 
@@ -110,6 +130,7 @@ function Settings() {
 
   const resetChanges = () => {
     setSettings(savedSettings);
+
     setMessage("");
     setError("");
   };
@@ -123,7 +144,7 @@ function Settings() {
       "Restore all settings to their default values?",
     );
 
-    if (!confirmed) return;
+    if (!confirmed || saving) return;
 
     try {
       setSaving(true);
@@ -134,11 +155,15 @@ function Settings() {
 
       const restoredSettings = {
         ...DEFAULT_SETTINGS,
-        ...(response.settings || {}),
+        ...(response?.settings || {}),
       };
 
       setSettings(restoredSettings);
       setSavedSettings(restoredSettings);
+
+      // IMPORTANT:
+      // Update App.jsx immediately
+      onSettingsChange?.(restoredSettings);
 
       setMessage("Default settings restored.");
 
@@ -160,7 +185,7 @@ function Settings() {
 
   if (!loaded) {
     return (
-      <div className="w-full max-w-6xl mx-auto">
+      <div className="mx-auto w-full max-w-6xl">
         <div className="rounded-xl border border-slate-800 bg-slate-900 p-10 text-center">
           <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-2 border-slate-700 border-t-cyan-400" />
 
@@ -171,7 +196,7 @@ function Settings() {
   }
 
   return (
-    <div className="w-full max-w-6xl mx-auto">
+    <div className="mx-auto w-full max-w-6xl">
       {/* =========================
           Header
       ========================= */}
@@ -195,7 +220,10 @@ function Settings() {
       ========================= */}
 
       {error && (
-        <div className="mb-6 rounded-xl border border-red-500/30 bg-red-500/10 p-4">
+        <div
+          role="alert"
+          className="mb-6 rounded-xl border border-red-500/30 bg-red-500/10 p-4"
+        >
           <p className="text-sm font-medium text-red-400">{error}</p>
         </div>
       )}
