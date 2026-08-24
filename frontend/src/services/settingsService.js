@@ -1,4 +1,4 @@
-const API_URL = "http://localhost:5000/api/settings";
+const API_URL = "https://techflow-backend-rakj.onrender.com/api/settings";
 
 const TOKEN_KEY = "techflow_token";
 
