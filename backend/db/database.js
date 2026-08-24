@@ -27,6 +27,10 @@ pool.on("error", (error) => {
 
 const initializeDatabase = async () => {
   try {
+    // =========================
+    // Admins Table
+    // =========================
+
     await pool.query(`
       CREATE TABLE IF NOT EXISTS admins (
         id SERIAL PRIMARY KEY,
@@ -34,6 +38,19 @@ const initializeDatabase = async () => {
         email VARCHAR(255) NOT NULL UNIQUE,
         password_hash TEXT NOT NULL,
         role VARCHAR(50) NOT NULL DEFAULT 'Administrator',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // =========================
+    // Users Table
+    // =========================
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(100) NOT NULL,
+        email VARCHAR(255) NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
