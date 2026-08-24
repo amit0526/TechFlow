@@ -86,6 +86,22 @@ const initializeDatabase = async () => {
       ON CONFLICT (id) DO NOTHING;
     `);
 
+    // =========================
+    // Verify Database Tables
+    // =========================
+
+    const tables = await pool.query(`
+      SELECT table_name
+      FROM information_schema.tables
+      WHERE table_schema = 'public'
+      ORDER BY table_name;
+    `);
+
+    console.log(
+      "Database tables:",
+      tables.rows.map((row) => row.table_name),
+    );
+
     console.log("Database tables initialized.");
   } catch (error) {
     console.error("Database initialization error:", error);
