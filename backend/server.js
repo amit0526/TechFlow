@@ -17,24 +17,28 @@ const app = express();
 const PORT = Number(process.env.PORT) || 5000;
 
 // =========================
-// Middleware
+// Allowed Frontend Origins
 // =========================
 
-const allowedOrigins = [
+const allowedOrigins = new Set([
   "http://localhost:5173",
   "https://techflow-fronted.onrender.com",
-];
+]);
+
+// =========================
+// CORS
+// =========================
 
 app.use(
   cors({
-    origin: function (origin, callback) {
-      // Allow requests without an Origin header
-      // such as health checks/server-to-server requests.
+    origin: (origin, callback) => {
+      // Allow requests without Origin header
+      // Example: Render health checks / server-to-server requests
       if (!origin) {
         return callback(null, true);
       }
 
-      if (allowedOrigins.includes(origin)) {
+      if (allowedOrigins.has(origin)) {
         return callback(null, true);
       }
 
@@ -42,11 +46,18 @@ app.use(
 
       return callback(new Error("Not allowed by CORS"));
     },
+
     methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+
     allowedHeaders: ["Content-Type", "Authorization", "Accept"],
-    credentials: true,
+
+    optionsSuccessStatus: 204,
   }),
 );
+
+// =========================
+// Body Parser
+// =========================
 
 app.use(express.json());
 
@@ -79,6 +90,8 @@ async function isEmailNotificationEnabled() {
   } catch (error) {
     console.error("Failed to check email notification setting:", error);
 
+    // Safe default:
+    // If settings cannot be read, do not send email.
     return false;
   }
 }
@@ -93,6 +106,7 @@ async function notifyUserAction(action, user) {
 
     if (!enabled) {
       console.log(`Email notification skipped: ${action}`);
+
       return;
     }
 
@@ -212,10 +226,10 @@ app.post("/api/users", authMiddleware, async (req, res) => {
 
     const result = await pool.query(
       `
-        INSERT INTO users (name, email)
-        VALUES ($1, $2)
-        RETURNING *
-      `,
+          INSERT INTO users (name, email)
+          VALUES ($1, $2)
+          RETURNING *
+        `,
       [cleanName, cleanEmail],
     );
 
@@ -261,13 +275,13 @@ app.patch("/api/users/:id", authMiddleware, async (req, res) => {
 
     const result = await pool.query(
       `
-        UPDATE users
-        SET
-          name = $1,
-          email = $2
-        WHERE id = $3
-        RETURNING *
-      `,
+          UPDATE users
+          SET
+            name = $1,
+            email = $2
+          WHERE id = $3
+          RETURNING *
+        `,
       [cleanName, cleanEmail, id],
     );
 
@@ -309,10 +323,10 @@ app.delete("/api/users/:id", authMiddleware, async (req, res) => {
 
     const result = await pool.query(
       `
-        DELETE FROM users
-        WHERE id = $1
-        RETURNING *
-      `,
+          DELETE FROM users
+          WHERE id = $1
+          RETURNING *
+        `,
       [id],
     );
 
@@ -356,6 +370,13 @@ app.use((req, res) => {
 
 app.use((error, req, res, next) => {
   console.error("Unhandled server error:", error);
+
+  // CORS error
+  if (error.message === "Not allowed by CORS") {
+    return res.status(403).json({
+      error: "CORS origin not allowed",
+    });
+  }
 
   res.status(500).json({
     error: "Internal server error",
