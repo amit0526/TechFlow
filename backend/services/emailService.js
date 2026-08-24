@@ -7,11 +7,19 @@ const adminEmail = process.env.ADMIN_EMAIL;
 const transporter =
   emailUser && emailPassword
     ? nodemailer.createTransport({
-        service: process.env.EMAIL_SERVICE || "gmail",
+        host: "smtp.gmail.com",
+        port: 587,
+        secure: false,
+        requireTLS: true,
+
         auth: {
           user: emailUser,
           pass: emailPassword,
         },
+
+        connectionTimeout: 15000,
+        greetingTimeout: 15000,
+        socketTimeout: 20000,
       })
     : null;
 
@@ -22,7 +30,7 @@ const transporter =
 async function sendEmail({ to, subject, text, html }) {
   if (!transporter) {
     console.warn(
-      "Email is not configured. Check EMAIL_USER and EMAIL_PASSWORD in backend/.env",
+      "Email is not configured. Check EMAIL_USER and EMAIL_PASSWORD in backend environment variables.",
     );
 
     return false;
@@ -30,7 +38,6 @@ async function sendEmail({ to, subject, text, html }) {
 
   if (!to) {
     console.warn("Email recipient is missing.");
-
     return false;
   }
 
@@ -60,7 +67,7 @@ async function sendEmail({ to, subject, text, html }) {
 async function sendUserNotificationEmail({ action, user }) {
   if (!adminEmail) {
     console.warn(
-      "ADMIN_EMAIL is not configured. Add ADMIN_EMAIL to backend/.env",
+      "ADMIN_EMAIL is not configured. Add ADMIN_EMAIL to backend environment variables.",
     );
 
     return false;
@@ -68,7 +75,6 @@ async function sendUserNotificationEmail({ action, user }) {
 
   if (!user) {
     console.warn("User data is missing for email notification.");
-
     return false;
   }
 
@@ -111,9 +117,7 @@ Action: ${action}
 
     html: `
       <div style="font-family: Arial, sans-serif; padding: 20px;">
-        <h2 style="color: #06b6d4;">
-          ${title}
-        </h2>
+        <h2 style="color: #06b6d4;">${title}</h2>
 
         <p>
           A user action occurred in your TechFlow admin panel.
