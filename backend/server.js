@@ -20,7 +20,7 @@ const PORT = Number(process.env.PORT) || 5000;
 // CORS
 // ======================================================
 
-const FRONTEND_ORIGIN = "https://techflow-fronted.onrender.com";
+const FRONTEND_ORIGIN = "https://tech-flow-steel.vercel.app";
 
 const corsOptions = {
   origin: FRONTEND_ORIGIN,
