@@ -17,134 +17,34 @@ const app = express();
 const PORT = Number(process.env.PORT) || 5000;
 
 // ======================================================
-// ALLOWED FRONTEND ORIGINS
+// CORS
 // ======================================================
 
-const allowedOrigins = new Set([
-  "http://localhost:5173",
-  "http://localhost:5000",
-  "https://techflow-fronted.onrender.com",
-]);
+const FRONTEND_ORIGIN = "https://techflow-fronted.onrender.com";
 
-// ======================================================
-// CORS - EXPLICIT
-// ======================================================
+const corsOptions = {
+  origin: FRONTEND_ORIGIN,
 
-function setCorsHeaders(req, res) {
-  const origin = req.headers.origin;
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
 
-  if (origin && allowedOrigins.has(origin)) {
-    res.setHeader("Access-Control-Allow-Origin", origin);
-    res.setHeader("Vary", "Origin");
-  }
+  allowedHeaders: ["Content-Type", "Authorization", "Accept"],
 
-  res.setHeader(
-    "Access-Control-Allow-Methods",
-    "GET,POST,PUT,PATCH,DELETE,OPTIONS",
-  );
+  credentials: false,
 
-  res.setHeader(
-    "Access-Control-Allow-Headers",
-    "Content-Type, Authorization, Accept",
-  );
+  optionsSuccessStatus: 204,
+};
 
-  res.setHeader("Access-Control-Max-Age", "86400");
-}
+// CORS MUST run before all API routes
+app.use(cors(corsOptions));
 
-// ======================================================
-// CORS MIDDLEWARE
-// IMPORTANT: MUST BE BEFORE ALL ROUTES
-// ======================================================
-
-app.use((req, res, next) => {
-  setCorsHeaders(req, res);
-
-  // Handle browser preflight request
-  if (req.method === "OPTIONS") {
-    const origin = req.headers.origin;
-
-    if (origin && !allowedOrigins.has(origin)) {
-      return res.status(403).json({
-        error: "CORS origin not allowed",
-      });
-    }
-
-    return res.sendStatus(204);
-  }
-
-  next();
-});
-
-// ======================================================
-// CORS PACKAGE
-// ======================================================
-
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      // Server-to-server / health-check requests
-      if (!origin) {
-        return callback(null, true);
-      }
-
-      if (allowedOrigins.has(origin)) {
-        return callback(null, true);
-      }
-
-      console.warn("Blocked CORS origin:", origin);
-
-      return callback(new Error("Not allowed by CORS"));
-    },
-
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-
-    allowedHeaders: ["Content-Type", "Authorization", "Accept"],
-
-    credentials: false,
-
-    optionsSuccessStatus: 204,
-  }),
-);
+// Explicit preflight handling
+app.options(/.*/, cors(corsOptions));
 
 // ======================================================
 // BODY PARSER
 // ======================================================
 
 app.use(express.json());
-
-// ======================================================
-// ROOT
-// ======================================================
-
-app.get("/", (req, res) => {
-  res.json({
-    message: "TechFlow backend is running 🚀",
-  });
-});
-
-// ======================================================
-// HEALTH CHECK
-// ======================================================
-
-app.get("/api/health", async (req, res) => {
-  try {
-    const result = await pool.query("SELECT NOW() AS current_time");
-
-    res.json({
-      status: "online",
-      database: "connected",
-      time: result.rows[0].current_time,
-    });
-  } catch (error) {
-    console.error("Database health check:", error);
-
-    res.status(500).json({
-      status: "offline",
-      database: "disconnected",
-      error: "Database connection failed",
-    });
-  }
-});
 
 // ======================================================
 // AUTH ROUTES
@@ -188,6 +88,7 @@ async function notifyUserAction(action, user) {
 
     if (!enabled) {
       console.log(`Email notification skipped: ${action}`);
+
       return;
     }
 
@@ -203,7 +104,45 @@ async function notifyUserAction(action, user) {
 }
 
 // ======================================================
+// ROOT HEALTH CHECK
+// GET /
+// ======================================================
+
+app.get("/", (req, res) => {
+  res.json({
+    message: "TechFlow backend is running 🚀",
+  });
+});
+
+// ======================================================
+// DATABASE HEALTH CHECK
+// GET /api/health
+// ======================================================
+
+app.get("/api/health", async (req, res) => {
+  try {
+    const result = await pool.query("SELECT NOW() AS current_time");
+
+    res.json({
+      status: "online",
+      database: "connected",
+      time: result.rows[0].current_time,
+    });
+  } catch (error) {
+    console.error("Database health check:", error);
+
+    res.status(500).json({
+      status: "offline",
+      database: "disconnected",
+      error: "Database connection failed",
+    });
+  }
+});
+
+// ======================================================
 // GET ALL USERS
+// GET /api/users
+// Protected
 // ======================================================
 
 app.get("/api/users", authMiddleware, async (req, res) => {
@@ -222,6 +161,8 @@ app.get("/api/users", authMiddleware, async (req, res) => {
 
 // ======================================================
 // GET SINGLE USER
+// GET /api/users/:id
+// Protected
 // ======================================================
 
 app.get("/api/users/:id", authMiddleware, async (req, res) => {
@@ -248,6 +189,8 @@ app.get("/api/users/:id", authMiddleware, async (req, res) => {
 
 // ======================================================
 // CREATE USER
+// POST /api/users
+// Protected
 // ======================================================
 
 app.post("/api/users", authMiddleware, async (req, res) => {
@@ -265,10 +208,10 @@ app.post("/api/users", authMiddleware, async (req, res) => {
 
     const result = await pool.query(
       `
-        INSERT INTO users (name, email)
-        VALUES ($1, $2)
-        RETURNING *
-      `,
+          INSERT INTO users (name, email)
+          VALUES ($1, $2)
+          RETURNING *
+        `,
       [cleanName, cleanEmail],
     );
 
@@ -294,6 +237,8 @@ app.post("/api/users", authMiddleware, async (req, res) => {
 
 // ======================================================
 // UPDATE USER
+// PATCH /api/users/:id
+// Protected
 // ======================================================
 
 app.patch("/api/users/:id", authMiddleware, async (req, res) => {
@@ -312,13 +257,13 @@ app.patch("/api/users/:id", authMiddleware, async (req, res) => {
 
     const result = await pool.query(
       `
-        UPDATE users
-        SET
-          name = $1,
-          email = $2
-        WHERE id = $3
-        RETURNING *
-      `,
+          UPDATE users
+          SET
+            name = $1,
+            email = $2
+          WHERE id = $3
+          RETURNING *
+        `,
       [cleanName, cleanEmail, id],
     );
 
@@ -350,6 +295,8 @@ app.patch("/api/users/:id", authMiddleware, async (req, res) => {
 
 // ======================================================
 // DELETE USER
+// DELETE /api/users/:id
+// Protected
 // ======================================================
 
 app.delete("/api/users/:id", authMiddleware, async (req, res) => {
@@ -358,10 +305,10 @@ app.delete("/api/users/:id", authMiddleware, async (req, res) => {
 
     const result = await pool.query(
       `
-        DELETE FROM users
-        WHERE id = $1
-        RETURNING *
-      `,
+          DELETE FROM users
+          WHERE id = $1
+          RETURNING *
+        `,
       [id],
     );
 
@@ -389,7 +336,7 @@ app.delete("/api/users/:id", authMiddleware, async (req, res) => {
 });
 
 // ======================================================
-// 404
+// 404 HANDLER
 // ======================================================
 
 app.use((req, res) => {
@@ -421,8 +368,8 @@ app.use((error, req, res, next) => {
 // START SERVER
 // ======================================================
 
-app.listen(PORT, "0.0.0.0", () => {
+app.listen(PORT, () => {
   console.log(`TechFlow backend running on port ${PORT}`);
 
-  console.log(`Allowed frontend: https://techflow-fronted.onrender.com`);
+  console.log(`CORS allowed origin: ${FRONTEND_ORIGIN}`);
 });
