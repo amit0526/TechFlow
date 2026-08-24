@@ -16,24 +16,26 @@ const app = express();
 
 const PORT = Number(process.env.PORT) || 5000;
 
-// =========================
-// Allowed Frontend Origins
-// =========================
+// =====================================================
+// ALLOWED FRONTEND ORIGINS
+// =====================================================
 
 const allowedOrigins = new Set([
   "http://localhost:5173",
+  "http://localhost:3000",
+  "http://localhost:5000",
   "https://techflow-fronted.onrender.com",
 ]);
 
-// =========================
+// =====================================================
 // CORS
-// =========================
+// =====================================================
 
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests without Origin header
-      // Example: Render health checks / server-to-server requests
+      // Allow requests without Origin.
+      // Example: Render health checks, Postman, server-to-server requests.
       if (!origin) {
         return callback(null, true);
       }
@@ -44,39 +46,50 @@ app.use(
 
       console.warn(`CORS blocked origin: ${origin}`);
 
-      return callback(new Error("Not allowed by CORS"));
+      // Do NOT throw an error here.
+      // Returning false prevents invalid CORS headers.
+      return callback(null, false);
     },
 
-    methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
 
     allowedHeaders: ["Content-Type", "Authorization", "Accept"],
 
     optionsSuccessStatus: 204,
+
+    // JWT is stored in localStorage.
+    // We are NOT using cookie authentication.
+    credentials: false,
   }),
 );
 
-// =========================
-// Body Parser
-// =========================
+// =====================================================
+// BODY PARSER
+// =====================================================
 
 app.use(express.json());
 
-// =========================
-// Auth Routes
-// =========================
+app.use(
+  express.urlencoded({
+    extended: true,
+  }),
+);
+
+// =====================================================
+// AUTH ROUTES
+// =====================================================
 
 app.use("/api/auth", authRoutes);
 
-// =========================
-// Settings Routes
-// =========================
+// =====================================================
+// SETTINGS ROUTES
+// =====================================================
 
 app.use("/api/settings", settingsRoutes);
 
-// =========================
-// Helper
-// Check Email Notifications
-// =========================
+// =====================================================
+// EMAIL NOTIFICATION SETTING
+// =====================================================
 
 async function isEmailNotificationEnabled() {
   try {
@@ -96,9 +109,9 @@ async function isEmailNotificationEnabled() {
   }
 }
 
-// =========================
-// Send User Email Safely
-// =========================
+// =====================================================
+// SEND USER EMAIL SAFELY
+// =====================================================
 
 async function notifyUserAction(action, user) {
   try {
@@ -106,7 +119,6 @@ async function notifyUserAction(action, user) {
 
     if (!enabled) {
       console.log(`Email notification skipped: ${action}`);
-
       return;
     }
 
@@ -121,10 +133,10 @@ async function notifyUserAction(action, user) {
   }
 }
 
-// =========================
-// Health Check
+// =====================================================
+// HEALTH CHECK
 // GET /
-// =========================
+// =====================================================
 
 app.get("/", (req, res) => {
   res.json({
@@ -132,10 +144,10 @@ app.get("/", (req, res) => {
   });
 });
 
-// =========================
-// Database Health Check
+// =====================================================
+// DATABASE HEALTH CHECK
 // GET /api/health
-// =========================
+// =====================================================
 
 app.get("/api/health", async (req, res) => {
   try {
@@ -157,11 +169,11 @@ app.get("/api/health", async (req, res) => {
   }
 });
 
-// =========================
-// Get All Users
+// =====================================================
+// GET ALL USERS
 // GET /api/users
 // Protected
-// =========================
+// =====================================================
 
 app.get("/api/users", authMiddleware, async (req, res) => {
   try {
@@ -177,11 +189,11 @@ app.get("/api/users", authMiddleware, async (req, res) => {
   }
 });
 
-// =========================
-// Get Single User
+// =====================================================
+// GET SINGLE USER
 // GET /api/users/:id
 // Protected
-// =========================
+// =====================================================
 
 app.get("/api/users/:id", authMiddleware, async (req, res) => {
   try {
@@ -205,11 +217,11 @@ app.get("/api/users/:id", authMiddleware, async (req, res) => {
   }
 });
 
-// =========================
-// Create User
+// =====================================================
+// CREATE USER
 // POST /api/users
 // Protected
-// =========================
+// =====================================================
 
 app.post("/api/users", authMiddleware, async (req, res) => {
   try {
@@ -253,11 +265,11 @@ app.post("/api/users", authMiddleware, async (req, res) => {
   }
 });
 
-// =========================
-// Update User
+// =====================================================
+// UPDATE USER
 // PATCH /api/users/:id
 // Protected
-// =========================
+// =====================================================
 
 app.patch("/api/users/:id", authMiddleware, async (req, res) => {
   try {
@@ -311,11 +323,11 @@ app.patch("/api/users/:id", authMiddleware, async (req, res) => {
   }
 });
 
-// =========================
-// Delete User
+// =====================================================
+// DELETE USER
 // DELETE /api/users/:id
 // Protected
-// =========================
+// =====================================================
 
 app.delete("/api/users/:id", authMiddleware, async (req, res) => {
   try {
@@ -353,9 +365,9 @@ app.delete("/api/users/:id", authMiddleware, async (req, res) => {
   }
 });
 
-// =========================
-// 404
-// =========================
+// =====================================================
+// 404 HANDLER
+// =====================================================
 
 app.use((req, res) => {
   res.status(404).json({
@@ -364,28 +376,21 @@ app.use((req, res) => {
   });
 });
 
-// =========================
-// Global Error Handler
-// =========================
+// =====================================================
+// GLOBAL ERROR HANDLER
+// =====================================================
 
 app.use((error, req, res, next) => {
   console.error("Unhandled server error:", error);
-
-  // CORS error
-  if (error.message === "Not allowed by CORS") {
-    return res.status(403).json({
-      error: "CORS origin not allowed",
-    });
-  }
 
   res.status(500).json({
     error: "Internal server error",
   });
 });
 
-// =========================
-// Start Server
-// =========================
+// =====================================================
+// START SERVER
+// =====================================================
 
 app.listen(PORT, () => {
   console.log(`TechFlow backend running on port ${PORT}`);
