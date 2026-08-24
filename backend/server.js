@@ -20,9 +20,31 @@ const PORT = Number(process.env.PORT) || 5000;
 // Middleware
 // =========================
 
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://techflow-fronted.onrender.com",
+];
+
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin: function (origin, callback) {
+      // Allow requests without an Origin header
+      // such as health checks/server-to-server requests.
+      if (!origin) {
+        return callback(null, true);
+      }
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      console.warn(`CORS blocked origin: ${origin}`);
+
+      return callback(new Error("Not allowed by CORS"));
+    },
+    methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "Accept"],
+    credentials: true,
   }),
 );
 
@@ -57,8 +79,6 @@ async function isEmailNotificationEnabled() {
   } catch (error) {
     console.error("Failed to check email notification setting:", error);
 
-    // Safe default:
-    // If settings cannot be read, do not send email.
     return false;
   }
 }
@@ -73,7 +93,6 @@ async function notifyUserAction(action, user) {
 
     if (!enabled) {
       console.log(`Email notification skipped: ${action}`);
-
       return;
     }
 
@@ -196,13 +215,12 @@ app.post("/api/users", authMiddleware, async (req, res) => {
         INSERT INTO users (name, email)
         VALUES ($1, $2)
         RETURNING *
-        `,
+      `,
       [cleanName, cleanEmail],
     );
 
     const user = result.rows[0];
 
-    // Email notification
     await notifyUserAction("created", user);
 
     res.status(201).json(user);
@@ -249,7 +267,7 @@ app.patch("/api/users/:id", authMiddleware, async (req, res) => {
           email = $2
         WHERE id = $3
         RETURNING *
-        `,
+      `,
       [cleanName, cleanEmail, id],
     );
 
@@ -261,7 +279,6 @@ app.patch("/api/users/:id", authMiddleware, async (req, res) => {
 
     const user = result.rows[0];
 
-    // Email notification
     await notifyUserAction("updated", user);
 
     res.json(user);
@@ -295,7 +312,7 @@ app.delete("/api/users/:id", authMiddleware, async (req, res) => {
         DELETE FROM users
         WHERE id = $1
         RETURNING *
-        `,
+      `,
       [id],
     );
 
@@ -307,7 +324,6 @@ app.delete("/api/users/:id", authMiddleware, async (req, res) => {
 
     const user = result.rows[0];
 
-    // Email notification
     await notifyUserAction("deleted", user);
 
     res.json({
@@ -351,5 +367,5 @@ app.use((error, req, res, next) => {
 // =========================
 
 app.listen(PORT, () => {
-  console.log(`TechFlow backend running at http://localhost:${PORT}`);
+  console.log(`TechFlow backend running on port ${PORT}`);
 });
