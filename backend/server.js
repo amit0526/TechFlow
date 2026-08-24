@@ -17,34 +17,134 @@ const app = express();
 const PORT = Number(process.env.PORT) || 5000;
 
 // ======================================================
-// CORS
+// ALLOWED FRONTEND ORIGINS
 // ======================================================
 
-const corsOptions = {
-  origin: [
-    "http://localhost:5173",
-    "http://localhost:5000",
-    "https://techflow-fronted.onrender.com",
-  ],
+const allowedOrigins = new Set([
+  "http://localhost:5173",
+  "http://localhost:5000",
+  "https://techflow-fronted.onrender.com",
+]);
 
-  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+// ======================================================
+// CORS - EXPLICIT
+// ======================================================
 
-  allowedHeaders: ["Content-Type", "Authorization", "Accept"],
+function setCorsHeaders(req, res) {
+  const origin = req.headers.origin;
 
-  credentials: false,
+  if (origin && allowedOrigins.has(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Vary", "Origin");
+  }
 
-  optionsSuccessStatus: 204,
-};
+  res.setHeader(
+    "Access-Control-Allow-Methods",
+    "GET,POST,PUT,PATCH,DELETE,OPTIONS",
+  );
 
-app.use(cors(corsOptions));
+  res.setHeader(
+    "Access-Control-Allow-Headers",
+    "Content-Type, Authorization, Accept",
+  );
 
-app.options(/.*/, cors(corsOptions));
+  res.setHeader("Access-Control-Max-Age", "86400");
+}
+
+// ======================================================
+// CORS MIDDLEWARE
+// IMPORTANT: MUST BE BEFORE ALL ROUTES
+// ======================================================
+
+app.use((req, res, next) => {
+  setCorsHeaders(req, res);
+
+  // Handle browser preflight request
+  if (req.method === "OPTIONS") {
+    const origin = req.headers.origin;
+
+    if (origin && !allowedOrigins.has(origin)) {
+      return res.status(403).json({
+        error: "CORS origin not allowed",
+      });
+    }
+
+    return res.sendStatus(204);
+  }
+
+  next();
+});
+
+// ======================================================
+// CORS PACKAGE
+// ======================================================
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Server-to-server / health-check requests
+      if (!origin) {
+        return callback(null, true);
+      }
+
+      if (allowedOrigins.has(origin)) {
+        return callback(null, true);
+      }
+
+      console.warn("Blocked CORS origin:", origin);
+
+      return callback(new Error("Not allowed by CORS"));
+    },
+
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+
+    allowedHeaders: ["Content-Type", "Authorization", "Accept"],
+
+    credentials: false,
+
+    optionsSuccessStatus: 204,
+  }),
+);
 
 // ======================================================
 // BODY PARSER
 // ======================================================
 
 app.use(express.json());
+
+// ======================================================
+// ROOT
+// ======================================================
+
+app.get("/", (req, res) => {
+  res.json({
+    message: "TechFlow backend is running 🚀",
+  });
+});
+
+// ======================================================
+// HEALTH CHECK
+// ======================================================
+
+app.get("/api/health", async (req, res) => {
+  try {
+    const result = await pool.query("SELECT NOW() AS current_time");
+
+    res.json({
+      status: "online",
+      database: "connected",
+      time: result.rows[0].current_time,
+    });
+  } catch (error) {
+    console.error("Database health check:", error);
+
+    res.status(500).json({
+      status: "offline",
+      database: "disconnected",
+      error: "Database connection failed",
+    });
+  }
+});
 
 // ======================================================
 // AUTH ROUTES
@@ -88,7 +188,6 @@ async function notifyUserAction(action, user) {
 
     if (!enabled) {
       console.log(`Email notification skipped: ${action}`);
-
       return;
     }
 
@@ -104,45 +203,7 @@ async function notifyUserAction(action, user) {
 }
 
 // ======================================================
-// ROOT HEALTH CHECK
-// GET /
-// ======================================================
-
-app.get("/", (req, res) => {
-  res.json({
-    message: "TechFlow backend is running 🚀",
-  });
-});
-
-// ======================================================
-// DATABASE HEALTH CHECK
-// GET /api/health
-// ======================================================
-
-app.get("/api/health", async (req, res) => {
-  try {
-    const result = await pool.query("SELECT NOW() AS current_time");
-
-    res.json({
-      status: "online",
-      database: "connected",
-      time: result.rows[0].current_time,
-    });
-  } catch (error) {
-    console.error("Database health check:", error);
-
-    res.status(500).json({
-      status: "offline",
-      database: "disconnected",
-      error: "Database connection failed",
-    });
-  }
-});
-
-// ======================================================
 // GET ALL USERS
-// GET /api/users
-// Protected
 // ======================================================
 
 app.get("/api/users", authMiddleware, async (req, res) => {
@@ -161,8 +222,6 @@ app.get("/api/users", authMiddleware, async (req, res) => {
 
 // ======================================================
 // GET SINGLE USER
-// GET /api/users/:id
-// Protected
 // ======================================================
 
 app.get("/api/users/:id", authMiddleware, async (req, res) => {
@@ -189,8 +248,6 @@ app.get("/api/users/:id", authMiddleware, async (req, res) => {
 
 // ======================================================
 // CREATE USER
-// POST /api/users
-// Protected
 // ======================================================
 
 app.post("/api/users", authMiddleware, async (req, res) => {
@@ -211,7 +268,7 @@ app.post("/api/users", authMiddleware, async (req, res) => {
         INSERT INTO users (name, email)
         VALUES ($1, $2)
         RETURNING *
-        `,
+      `,
       [cleanName, cleanEmail],
     );
 
@@ -237,8 +294,6 @@ app.post("/api/users", authMiddleware, async (req, res) => {
 
 // ======================================================
 // UPDATE USER
-// PATCH /api/users/:id
-// Protected
 // ======================================================
 
 app.patch("/api/users/:id", authMiddleware, async (req, res) => {
@@ -263,7 +318,7 @@ app.patch("/api/users/:id", authMiddleware, async (req, res) => {
           email = $2
         WHERE id = $3
         RETURNING *
-        `,
+      `,
       [cleanName, cleanEmail, id],
     );
 
@@ -295,8 +350,6 @@ app.patch("/api/users/:id", authMiddleware, async (req, res) => {
 
 // ======================================================
 // DELETE USER
-// DELETE /api/users/:id
-// Protected
 // ======================================================
 
 app.delete("/api/users/:id", authMiddleware, async (req, res) => {
@@ -308,7 +361,7 @@ app.delete("/api/users/:id", authMiddleware, async (req, res) => {
         DELETE FROM users
         WHERE id = $1
         RETURNING *
-        `,
+      `,
       [id],
     );
 
@@ -336,7 +389,7 @@ app.delete("/api/users/:id", authMiddleware, async (req, res) => {
 });
 
 // ======================================================
-// 404 HANDLER
+// 404
 // ======================================================
 
 app.use((req, res) => {
@@ -368,6 +421,8 @@ app.use((error, req, res, next) => {
 // START SERVER
 // ======================================================
 
-app.listen(PORT, () => {
+app.listen(PORT, "0.0.0.0", () => {
   console.log(`TechFlow backend running on port ${PORT}`);
+
+  console.log(`Allowed frontend: https://techflow-fronted.onrender.com`);
 });
